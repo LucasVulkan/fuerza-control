@@ -39,6 +39,9 @@ body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body)}
 .chip b{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
 .vbtn{background:var(--chip);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px 10px;font:600 12px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(6px)}
 .vbtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.vbtn .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:baseline;box-shadow:0 0 0 1.5px #fff}   /* leyenda: el color de la capa */
+.flabel{position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;background:var(--chip);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font:600 11px/1.3 var(--mono);color:var(--ink)}
+.flabel[hidden]{display:none}
 .legend{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:8px;font:12px var(--mono);color:var(--muted)}
 .loading[hidden]{display:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font:600 14px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--stage)}
@@ -76,8 +79,13 @@ input[type=range]{width:100%;margin:2px 0;accent-color:var(--accent);height:22px
 
 .muscles{display:grid;grid-template-columns:auto minmax(0,1fr) 38px;gap:7px 10px;align-items:center}
 .muscles .n{font-size:13px}
+.muscles .n.sec{color:var(--muted)}   /* músculo secundario del ejercicio (X03-19) */
 .muscles .bar{height:8px;border-radius:4px;background:var(--track);overflow:hidden}
 .muscles .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--heat-mid),var(--heat-hi));width:0}
+#joints{grid-template-columns:minmax(0,1fr) 64px 104px}
+#joints > div{cursor:pointer;padding-block:2px}   /* pulsar una fila traza esa articulación (X03-17) */
+#joints .n.sel,#joints .v.sel{background:var(--track);font-weight:600}
+#joints .bar.sel{outline:3px solid var(--track)}   /* columnas fijas: las filas cambian de texto cada frame */
 .muscles .v{font:500 12px var(--mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--muted)}
 .spark{margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px}
 .spark svg{display:block;width:100%;height:76px;overflow:visible}
@@ -118,7 +126,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="overlay toggles">
       <button class="vbtn" id="heatBtn" aria-pressed="true">Músculos</button>
       <button class="vbtn" id="refBtn" aria-pressed="false">Referencia</button>
-      <button class="vbtn" id="linesBtn" aria-pressed="true">Líneas</button>
+      <button class="vbtn" id="lyRes" aria-pressed="true"><i class="dot" style="background:#7a3ff2"></i>Resistencia</button>
+      <button class="vbtn" id="lySup" aria-pressed="true"><i class="dot" style="background:#1f9d55"></i>Apoyo</button>
+      <button class="vbtn" id="lyArm" aria-pressed="true"><i class="dot" style="background:var(--ink)"></i>Brazos</button>
+      <button class="vbtn" id="lyBal" aria-pressed="false"><i class="dot" style="background:var(--path)"></i>Equilibrio</button>
+      <button class="vbtn" id="lyPath" aria-pressed="false"><i class="dot" style="background:var(--path)"></i>Trayectoria</button>
+      <button class="vbtn" id="lyNum" aria-pressed="false">Cifras</button>
     </div>
     <div class="overlay readout" id="readout"></div>
     <div class="legend">baja <i></i> alta</div>
@@ -150,12 +163,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     </section>
 
     <section>
-      <h2>Demanda estimada <small id="demandAt"></small></h2>
+      <h2>Demanda relativa <small id="demandAt"></small></h2>
       <div class="muscles" id="muscles"></div>
       <div class="spark">
-        <svg viewBox="0 0 300 76" preserveAspectRatio="none" id="spark" aria-label="Demanda de rodilla y cadera a lo largo del recorrido"></svg>
-        <div class="lg"><span style="color:var(--heat-hi)">Rodilla (cuádriceps)</span><span style="color:var(--accent)">Cadera (glúteo)</span></div>
+        <svg viewBox="0 0 300 76" preserveAspectRatio="none" id="spark" aria-label="Demanda de los músculos principales a lo largo del recorrido"></svg>
+        <div class="lg" id="sparkLg"></div>
       </div>
+    </section>
+
+    <section>
+      <h2>Articulaciones <small><label><input type="checkbox" id="allJoints"> Ver todas</label></small></h2>
+      <div class="muscles" id="joints"></div>
     </section>
 
     <section>

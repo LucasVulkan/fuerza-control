@@ -93,7 +93,7 @@ const { open } = require('./harness');
       const codo = s => parseFloat(D.evaluate(ex, s).readout.find(x => x[0] === 'Codo')[1]), e0 = codo(0);
       for (const [nm, body, prm] of [['por defecto', {}, {}], ['1,65 m', { height: 165 }, {}], ['1,95 m', { height: 195 }, {}], ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}],
         ['polea alta', {}, { pulleyH: 80 }], ['polea baja', {}, { pulleyH: -30 }], ['adelante', {}, { trunk: 25 }], ['atrás', {}, { trunk: -15 }], ['quieto', {}, { swing: 0 }], ['balanceo', {}, { swing: 200 }],
-        ['al pecho', {}, { dest: -20 }], ['rodillas', {}, { knees: 40 }], ['barra recta', {}, { impl: 'barra_recta' }], ['barra supina ancha', {}, { impl: 'barra_recta', gripType: 'supino', grip: 1.6 }], ['cuerda', {}, { impl: 'cuerda', pulleyH: 60 }]]) {
+        ['al pecho', {}, { dest: -20 }], ['rodillas', {}, { knees: 40 }], ['curvado', {}, { curv: 20 }], ['erguido', {}, { curv: -15 }], ['barra recta', {}, { impl: 'barra_recta' }], ['barra supina ancha', {}, { impl: 'barra_recta', gripType: 'supino', grip: 1.6 }], ['cuerda', {}, { impl: 'cuerda', pulleyH: 60 }]].filter(([, , prm]) => !(prm.impl && D.POSES.exercises[ex].meta.impl))) {   // el jalón lleva su barra: sin otros manerales
         const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
         const st = []; let prev, miss;
         for (let i = 0; i <= 40; i++) { const r = D.evaluate(ex, i / 40), c = r.bar.center; if (prev) st.push(c.distanceTo(prev)); prev = c.clone(); miss ??= r.warns.find(x => x.includes('no llega')) || (D.BN.some(n => isNaN(r.pose[n].p.x)) && 'NaN'); }
@@ -101,6 +101,33 @@ const { open } = require('./harness');
         if (!(worst <= 2)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡salto entre frames: un paso ${worst.toFixed(1)}× el de al lado!`); }
         if (miss) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡${miss}!`); }
         if (!(Math.abs(codo(0) - e0) <= 2)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡con los brazos estirados el codo está a ${codo(0)}° (autorado ${e0}°)!`); }
+        S.body = sb; S.per[ex] = sp; }
+    }
+    // sentadilla armónica (X03-15, spec §19): la tibia sigue el ritmo de la animación y la dorsiflexión manda
+    for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'stand')) {
+      const E = D.POSES.exercises[ex], DEGS = Math.PI / 180, keys = [0, ...(E.mid || []).map(m => m.s), 1];
+      const thA = s => D.withBody(D.DEFAULT_BODY, () => D.features(D.authoredPose(ex, s), ex, s).th);
+      const sB = keys.reduce((a, s) => thA(s) > thA(a) ? s : a), pA = s => (thA(s) - thA(0)) / (thA(sB) - thA(0));
+      const readTib = r => r.tib / DEGS;   // `th` exacto que pide el solver (el readout lo redondea a grados)
+      let tib0, tibDef;
+      for (const [nm, body, prm] of [['por defecto', {}, {}], ['knees +10', {}, { knees: 10 }], ['knees -10', {}, { knees: -10 }], ['dorsi 20', { dorsi: 20 }, {}], ['dorsi 50', { dorsi: 50 }, {}],
+        ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}]]) {
+        const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
+        const R = []; for (let i = 0; i <= 20; i++) { const s = i / 20, r = D.evaluate(ex, s), f = D.features(r.pose, ex, s); R.push({ th: f.th, phi: f.phi, rd: readTib(r) }); }
+        const rB = D.evaluate(ex, sB), thB = D.features(rB.pose, ex, sB).th, readB = readTib(rB);
+        // 1. armónica: (tibia(s) − tibia(0)) / (tibia(sB) − tibia(0)) = avance de la autorada, ±0,03. Se mide en el `th` del readout (lo que
+        //    controla el código, sin redondear); en la pose, medida en 3D, la tibia se separa hasta ~0,035 con el fémur largo (la IK frente al modelo 2D del solver)
+        let worstP = 0, worstPose = 0; R.forEach((x, i) => { worstP = Math.max(worstP, Math.abs((x.rd - R[0].rd) / (readB - R[0].rd) - pA(i / 20))); worstPose = Math.max(worstPose, Math.abs((x.th - R[0].th) / (thB - R[0].th) - pA(i / 20))); });
+        if (!(worstP <= 0.03)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡la tibia no sigue el ritmo de la animación (se separa ${worstP.toFixed(3)})!`); }
+        if (worstPose > 0.03) out.push(`${nm.padEnd(13)} ${ex}: aviso: en la pose la tibia se separa ${worstPose.toFixed(3)} del ritmo`);
+        // 2. la dorsiflexión manda: abajo la tibia sube (50°) o baja (20°) 15° ± 1,5° (el `th` del solver; en la pose, medida en 3D, un poco menos por la anchura de pies)
+        if (nm === 'por defecto') { tibDef = readB; tib0 = thB; }
+        else if (body.dorsi) { const want = (body.dorsi - 35), got = readB - tibDef;
+          if (!(Math.abs(got - want) <= 1.5)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡la tibia abajo cambia ${got.toFixed(1)}° y debería cambiar ${want}°!`); }
+          out.push(`${nm.padEnd(13)} ${ex}: tibia abajo ${got > 0 ? '+' : ''}${got.toFixed(1)}° (en la pose ${((thB - tib0) / DEGS).toFixed(1)}°)`); }
+        // 3. sin tirones: el tronco no cambia más de 6° entre dos muestras seguidas
+        const jump = Math.max(...R.slice(1).map((x, i) => Math.abs(x.phi - R[i].phi))) / DEGS;
+        if (!(jump <= 6)) { fail++; out.push(`${nm.padEnd(13)} ${ex}: ¡el tronco salta ${jump.toFixed(1)}° entre dos muestras!`); }
         S.body = sb; S.per[ex] = sp; }
     }
     out.push(fail ? `FALLOS: ${fail}` : 'OK'); return out.join('\n'); }));

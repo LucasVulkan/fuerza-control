@@ -142,6 +142,8 @@ for ex in EXERCISES:
         f, z, *x = act['ff_pulley']; out['exercises'][ex]['meta']['pulley'] = [x[0] if x else 0.0, z, f]
     if act.get('ff_hand'):     # una sola mano tira (remo a un brazo): la otra va tal cual con el tronco
         out['exercises'][ex]['meta']['hand'] = act['ff_hand']
+    if act.get('ff_impl'):     # implemento propio de la acción (la barra del jalón): el visor no dibuja maneral
+        out['exercises'][ex]['meta']['impl'] = act['ff_impl']
     for key, f in [*FRAMES.items(), *(('mid', m) for m in mids(ex))]:
         sc.frame_set(f); sc.frame_set(f)
         P = pb['PROPERTIES']

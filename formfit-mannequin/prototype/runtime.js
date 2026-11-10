@@ -20,6 +20,9 @@ const keysOf = ex => KEYS[ex] ??= [{ s: 0, ...POSES.exercises[ex].start }, ...(P
 function seg(ex, s) { const K = keysOf(ex); let i = 0; while (i < K.length - 2 && s > K[i + 1].s) i++;
   return [K[i], K[i + 1], Math.min(1, Math.max(0, (s - K[i].s) / (K[i + 1].s - K[i].s))), i]; }
 
+// jalón (X03-20): la barra es la de la acción (meta.impl, del .blend: ff_impl), no un maneral del visor
+const JALON = ex => POSES.exercises[ex]?.meta?.impl === 'barra_jalon';
+
 /* ---------------- Ejercicios: qué sliders tiene cada uno ---------------- */
 const EXERCISES = {
   back_squat: { name: 'Sentadilla trasera', short: 'Trasera', base: 'stand', bar: true, elbowPref: null },
@@ -86,19 +89,24 @@ const PARAMS = {
   // polea sentado (remo en polea): la pelvis en el asiento y los pies en la plataforma; los brazos tiran de un maneral unido por
   // un cable a la polea. Comparte con el remo los brazos (y con la bisagra las manos de referencia)
   cable: [
-    { id: 'impl', label: 'Maneral', hide: ex => !!POSES.exercises[ex]?.meta?.hand, def: 'triangulo', options: [['triangulo', 'Triángulo'], ['barra_recta', 'Barra recta'], ['cuerda', 'Cuerda']] },
-    { id: 'gripType', label: 'Agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino']] },
-    { id: 'pulleyH', label: 'Altura de la polea', min: -30, max: 80, step: 1, def: 0, fmt: v => `${Math.round((POSES.exercises[state.exId]?.meta?.pulley ? pulleyAt(state.exId, v).y : 0) * 100)} cm del suelo${v === 0 ? ' (en línea con el brazo)' : ''}` },
+    { id: 'impl', label: 'Maneral', hide: ex => !!POSES.exercises[ex]?.meta?.hand || JALON(ex), def: 'triangulo', options: [['triangulo', 'Triángulo'], ['barra_recta', 'Barra recta'], ['cuerda', 'Cuerda']] },
+    { id: 'gripType', label: 'Agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand || JALON(ex), def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino']] },
+    { id: 'gripType', label: 'Agarre', hide: ex => !JALON(ex), def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino'], ['neutro', 'Neutro']] },   // jalón: elige la acción de su agarre (variantFor)
+    { id: 'pulleyH', label: 'Altura de la polea', hide: JALON, min: -30, max: 80, step: 1, def: 0, fmt: v => `${Math.round((POSES.exercises[state.exId]?.meta?.pulley ? pulleyAt(state.exId, v).y : 0) * 100)} cm del suelo${v === 0 ? ' (en línea con el brazo)' : ''}` },
     { id: 'trunk', label: 'Inclinación del tronco', min: -15, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)}° más ${v > 0 ? 'adelante' : 'atrás'}` },
+    // curvatura (X03-20): giro del pecho y la columna alta alrededor del eje lateral, tras la inclinación y antes de llevar las manos al maneral
+    { id: 'curv', label: 'Curvatura del tronco', min: -15, max: 20, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : v > 0 ? `${v}° más encorvado` : `${-v}° más erguido, sacando pecho` },
     { id: 'swing', label: 'Balanceo del tronco', min: 0, max: 200, step: 5, def: 100, fmt: v => v === 100 ? 'el autorado' : v === 0 ? 'quieto (como al tirar)' : `${v}% del autorado` },
-    { id: 'dest', label: 'Hacia dónde tira', min: -20, max: 8, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada (ombligo)' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'el pecho' : 'la cadera'}` },
-    { id: 'knees', label: 'Flexión de rodilla', min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la pelvis se desliza por el asiento)` },
-    { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand, min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
+    { id: 'dest', label: 'Hacia dónde tira', min: -20, max: 8, step: 1, def: 0, fmt: v => JALON(state.exId) ? (v === 0 ? 'la autorada' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'la clavícula' : 'el esternón'}`)
+      : v === 0 ? 'la autorada (ombligo)' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'el pecho' : 'la cadera'}` },
+    { id: 'knees', label: 'Flexión de rodilla', hide: JALON, min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la pelvis se desliza por el asiento)` },
+    { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand || JALON(ex), min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
-    { id: 'wrist', label: 'Mano', def: 'polea', options: [['polea', 'Hacia la polea'], ['autorada', 'La de Blender']] },
-    { id: 'elbows', label: 'Codos', min: -30, max: 45, step: 1, def: 0, fmt: v => v === 0 ? 'los del maneral' : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` },
+    { id: 'wrist', label: 'Mano', hide: JALON, def: 'polea', options: [['polea', 'Hacia la polea'], ['autorada', 'La de Blender']] },
+    { id: 'elbows', label: 'Codos', hide: JALON, min: -30, max: 45, step: 1, def: 0, fmt: v => v === 0 ? 'los del maneral' : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` },
     { id: 'bottom', label: 'Desde dónde empieza', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'brazos estirados (la autorada)' : `${v}% del recorrido` },
     { id: 'top', label: 'Hasta dónde tira', min: 40, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}% del recorrido` },
+    { id: 'load', label: 'Carga', min: 0, max: 150, step: 5, def: 60, fmt: v => `${v}% del peso corporal` },
   ],
   // colgado (dominada): el cuerpo cuelga de las manos; sin carga (el peso es el del cuerpo)
   hang: [
@@ -114,7 +122,8 @@ const PRESETS = {
   torso: { femur: 94, tibia: 100, torso: 110, dorsi: 35 },
   ankle: { femur: 100, tibia: 100, torso: 100, dorsi: 20 },
 };
-const state = { exId: 'back_squat', per: {}, body: { height: 180, ...PRESETS.avg }, s: 1, playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, lines: true, heat: true, ref: false };
+const state = { exId: 'back_squat', per: {}, body: { height: 180, ...PRESETS.avg }, s: 1, playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, heat: true, ref: false, allJoints: false, joint: null,
+  lyRes: true, lySup: true, lyArm: true, lyBal: false, lyPath: false, lyNum: false };   // capas de fuerza (X03-17) y cifras (X03-18)
 for (const [id, ex] of Object.entries(EXERCISES)) state.per[id] = Object.fromEntries(PARAMS[ex.base].map(p => [p.id, p.def]));
 // variantes (acción con `ff_variant_of`, p. ej. Chinup = dominada supina): no son un ejercicio aparte; comparten los ajustes del
 // suyo y se usan desde su chip de agarre (variantFor)
@@ -277,17 +286,7 @@ function solveStand(d, beta, thPref, phiPref, stanceHalf, toeYaw, barOff, load, 
     phi = clamp(phi - f * fp / den, phMin, phMax); th = clamp(th - f * gt / den, thMin, thMax);
   }
   const g = geo(phi, th);
-  // demanda (momentos cuasi-estáticos)
-  const aboveHip = mT + mb, zH = (mT * g.trunk.z + mb * g.bar.z) / aboveHip, Mhip = aboveHip * (zH - g.hip.z);
-  const aboveKnee = aboveHip + mTh, zK = (mT * g.trunk.z + mb * g.bar.z + mTh * (g.hip.z + g.knee.z) / 2) / aboveKnee, Mknee = aboveKnee * (g.knee.z - zK);
-  const l5z = g.hip.z + g.u.z * 0.1, upz = g.hip.z + g.u.z * d.Ltr * 0.7, Mspine = 0.55 * (upz - l5z) + mb * (g.bar.z - l5z);
-  const deep = clamp(beta / (110 * DEG)), hipN = Mhip / (0.55 * d.k);
-  const act = {
-    quads: clamp(Mknee / (0.4 * d.k)), glutes: clamp(hipN * (0.55 + 0.45 * deep)), hams: clamp(hipN * 0.6),
-    add: clamp(hipN * (0.3 + 0.4 * clamp((stanceHalf / d.shHalf - 0.8) / 0.8)) * (0.3 + 0.7 * deep)),
-    erect: clamp(Mspine / (0.5 * d.k)), calves: clamp(tot * mfz / (0.12 * d.k) * 0.55),
-  };
-  return { ...g, act, mfz, balance: Math.abs(F(phi, th)) };
+  return { ...g, mfz, balance: Math.abs(F(phi, th)) };
 }
 
 /* ---------------- Utilidades de IK ---------------- */
@@ -391,6 +390,7 @@ const IMPL = {
   barra_recta:     { d: 0.028, w: 0.24, palm: 'down' },
   cuerda:          { d: 0.032, vert: true, half: 0.06, spread: 0.10, palm: 'in' },
   asa:             { d: 0.03, fixed: true },   // remo a un brazo: el asa en D de la acción
+  barra_jalon:     { d: 0.028, fixed: true },  // jalón (X03-20): la barra de la acción (meta.impl); no es una opción: solo para los datos de dibujo
 };
 // dominada: agarre supino (la palma hacia uno, misma barra; `roll`: la mano gira media vuelta sobre su eje antes de alinear
 // el asa: girar 180° «lo mínimo» elige un eje cualquiera que cambia de un frame a otro) y neutro (asas paralelas, a ±25 cm, de delante a atrás)
@@ -450,6 +450,13 @@ function hingeS(ex, s) { const c = hingeCut(ex), cut = c.sCut !== c.sB;
 // ángulo autorado de la rodilla (muslo + tibia) en el punto bajo: el tope de «Flexión de rodilla» se cuenta desde él
 const HKB = {};
 const hingeKB = ex => HKB[ex] ??= withBody(DEFAULT_BODY, () => { const sB = hingeKeys(ex).sB, A = authoredPose(ex, sB), f = features(A, ex, sB); return f.beta + f.th; });
+// sentadilla (X03-15): la tibia conserva el ritmo de Blender y solo se escala su recorrido. `th0` = tibia de pie, `FB`/`sB` = rasgos y s
+// de la clave con la tibia más adelantada (el punto bajo); con ellos, el avance de la tibia en un frame es p = (F.th − th0) / (FB.th − th0)
+const SREF = {};
+const standRef = ex => SREF[ex] ??= withBody(DEFAULT_BODY, () => {
+  const fs = keysOf(ex).map(k => ({ s: k.s, F: features(authoredPose(ex, k.s), ex, k.s) })), B = fs.reduce((a, x) => x.F.th > a.F.th ? x : a);
+  return { th0: fs[0].F.th, sB: B.s, FB: B.F };
+});
 // bisagra: en cada clave, puño − barra (por lado). Entre claves se interpola y las manos van siempre a la barra; la pose
 // interpolada describe un arco y la barra una recta (en el rumano se separaban hasta 11 cm).
 const gripOf = (P, S) => { const hn = `DEF-HAND.${S}`; return P[hn].p.clone().add(socketRest(S).applyQuaternion(P[hn].q.clone().multiply(REST[hn].q.clone().invert()))); };
@@ -474,6 +481,7 @@ const ELBOW_MAN = { barra_recta: 40 };
 // maneral de polea (spec X02; blender/ejercicios/_manerales.py): el del implemento elegido (a un brazo, el asa en D; la barra
 // recta supina tiene su propia mano). null si el .blend aún no lo tiene (se dibuja el esquemático)
 function manData(ex) {
+  if (JALON(ex)) return null;   // la barra del jalón es la de la acción: sin maneral del visor
   const prm = state.per[ex], one = POSES.exercises[ex].meta?.hand;
   const m = one ? 'asa' : prm.impl === 'barra_recta' && prm.gripType === 'supino' ? 'barra_supina' : prm.impl;
   const h = POSES.hands?.[m]; if (!h?.[one || 'L']?.maneral) return null;
@@ -485,7 +493,8 @@ function manData(ex) {
 // polea: la de la acción (columna, a un lado) a la altura donde la corta la línea antebrazo -> maneral de la pose de inicio
 // (la mano apunta a la polea): con los valores por defecto, el brazo y el cable quedan en línea con la animación del usuario
 const PUL = {};
-const pulleyOf = ex => PUL[ex] ??= (() => { const E = POSES.exercises[ex], P = V(...E.meta.pulley), B = E.start.bones, S = E.meta.hand, b = n => V(...B[n].p);
+const pulleyOf = ex => PUL[ex] ??= (() => { const E = POSES.exercises[ex], P = V(...E.meta.pulley); if (JALON(ex)) return P;   // jalón: la polea alta, tal cual (sobre la barra)
+  const B = E.start.bones, S = E.meta.hand, b = n => V(...B[n].p);
   const sh = S ? b(`DEF-FORARM01.${S}`) : b('DEF-FORARM01.L').add(b('DEF-FORARM01.R')).multiplyScalar(0.5), h = V(...E.start.bar.center);   // codo -> maneral
   P.y = Math.max(0.05, sh.y + (h.y - sh.y) * (P.z - sh.z) / (h.z - sh.z)); return P; })();
 const pulleyAt = (ex, cm) => { const P = pulleyOf(ex).clone(); P.y = Math.max(0.05, P.y + cm / 100); return P; };   // con «Altura de la polea», sin bajar del suelo
@@ -504,6 +513,161 @@ function rowCut(ex) {
   return (RCUT[k] = (lo + hi) / 2);
 }
 
+/* ---------------- Demanda: momentos por articulación ---------------- */
+// Estática inversa sobre la pose final (spec X03 §14): cuasi-estática, sin inercias. Fuerzas en pesos corporales (PC), longitudes en m,
+// momentos en PC·m. Da momentos netos por articulación (física); el paso a músculo es un reparto por convención (tabla de `demand`).
+// Ejes glTF: Y arriba, +Z delante, +X a la izquierda del maniquí.
+// Partes del cuerpo: masa (fracción del peso) y centro de masas. pelvis + trunkUp = el tronco único de comOffset.
+function bodyParts(P) {
+  const p = n => P[n].p, hip = midOf(P, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), sh = midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R');
+  const along = (n, l) => p(n).clone().add(V(0, l * K(), 0).applyQuaternion(P[n].q)), at = (a, b, t) => p(a).clone().lerp(p(b), t);
+  const parts = [{ id: 'pelvis', m: 0.1117, c: hip.clone().lerp(sh, 0.12) }, { id: 'trunkUp', m: 0.3229, c: hip.clone().lerp(sh, 0.6315) },
+    { id: 'head', m: 0.0694, c: along('DEF-HEAD', 0.1) }];
+  for (const S of ['L', 'R']) parts.push(
+    { id: 'armU.' + S, m: 0.0271, c: at(`DEF-ARM01.${S}`, `DEF-FORARM01.${S}`, 0.577) }, { id: 'armF.' + S, m: 0.0162, c: at(`DEF-FORARM01.${S}`, `DEF-HAND.${S}`, 0.457) },
+    { id: 'hand.' + S, m: 0.0061, c: along(`DEF-HAND.${S}`, 0.05) }, { id: 'thigh.' + S, m: 0.1416, c: at(`DEF-THIGH01.${S}`, `DEF-SHIN01.${S}`, 0.41) },
+    { id: 'shank.' + S, m: 0.0433, c: at(`DEF-SHIN01.${S}`, `DEF-FOOT.${S}`, 0.44) }, { id: 'foot.' + S, m: 0.0137, c: at(`DEF-FOOT.${S}`, `DEF-TOE.${S}`, 0.4) });
+  return parts;
+}
+// Ejes del cuerpo (§14.6): pelvis (xP, nP) y tronco (xT, uT, nT = delante); `hip` = punto medio de las caderas
+function ejesCuerpo(P) {
+  const n = (p, q) => P[p].p.clone().sub(P[q].p).normalize(), hip = midOf(P, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), sh = midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R');
+  const a = { hip, xP: n('DEF-THIGH01.L', 'DEF-THIGH01.R'), xT: n('DEF-ARM01.L', 'DEF-ARM01.R'), uT: sh.clone().sub(hip).normalize() };
+  a.nT = a.xT.clone().cross(a.uT); a.nP = a.xP.clone().cross(a.uT);
+  return a;
+}
+// Ángulos anatómicos en grados (X03-18, spec §22): 0 = posición anatómica (de pie, piernas rectas, brazos colgando), nunca la pose de Blender.
+// Las piernas y la columna del reposo del rig ya son la anatómica, así que ahí se mide la DIFERENCIA con el mismo ángulo en el reposo (`REST_ANG`);
+// el hombro se mide con vectores contra el tronco (en el reposo los brazos van en cruz: abd = 90°). Claves por lado: `knee.flex.L`…; `lumbar.flex` sin lado.
+const angulos = P => {
+  const d = (a, b) => P[b].p.clone().sub(P[a].p), at = (u, v) => u.angleTo(v) / DEG, e = ejesCuerpo(P);
+  const u = P['DEF-SPINE01'].p.clone().sub(e.hip).normalize(), f = e.xP.clone().cross(u), w = d('DEF-SPINE01', 'DEF-CHEST'), o = {};   // u: eje de la pelvis; f: delante
+  for (const S of ['L', 'R']) {
+    const sg = S === 'L' ? 1 : -1, th = `DEF-THIGH01.${S}`, sn = `DEF-SHIN01.${S}`, ft = `DEF-FOOT.${S}`, ar = `DEF-ARM01.${S}`, fa = `DEF-FORARM01.${S}`, t = d(th, sn), h = d(ar, fa);
+    o[`knee.flex.${S}`] = at(t, d(sn, ft)); o[`elbow.flex.${S}`] = at(h, d(fa, `DEF-HAND.${S}`)); o[`ankle.dorsi.${S}`] = at(d(ft, sn), d(ft, `DEF-TOE.${S}`));
+    o[`hip.flex.${S}`] = Math.atan2(t.dot(f), -t.dot(u)) / DEG; o[`hip.abd.${S}`] = Math.atan2(sg * t.dot(e.xP), Math.hypot(t.dot(f), t.dot(u))) / DEG;   // fuera del plano sagital (con el muslo flexionado más de 90° la fórmula con −t·u se disparaba)
+    o[`shoulder.flex.${S}`] = Math.atan2(h.dot(e.nT), -h.dot(e.uT)) / DEG; o[`shoulder.abd.${S}`] = Math.atan2(sg * h.dot(e.xT), -h.dot(e.uT)) / DEG;
+  }
+  o['lumbar.flex'] = Math.atan2(w.dot(f), w.dot(u)) / DEG;
+  return o;
+};
+const REST_ANG = angulos(REST);
+function anatomia(P) {
+  const a = angulos(P), o = {};
+  // hombro: sin restar el reposo; con el brazo por encima de la cabeza el ángulo pasa de 180° a −180°, así que se mide en (−90°, 270°]
+  for (const k in a) o[k] = k.startsWith('shoulder') ? (a[k] < -90 ? a[k] + 360 : a[k]) : k.startsWith('ankle') ? REST_ANG[k] - a[k] : a[k] - REST_ANG[k];
+  return o;
+}
+// Cómo se apoya cada base: `cargas` (fuerzas externas de la carga) y, o bien `vert` (grupos de apoyos verticales: el suelo o la barra,
+// que empujan solo hacia arriba y se calculan), o bien `fijo` (partes apoyadas en algo fijo: asiento, respaldo, plataforma; su fuerza
+// es desconocida y solo impide medir desde ese lado). Si hay algún apoyo fijo, todos los apoyos de la base se tratan como fijos.
+const footPt = (P, S) => P[`DEF-FOOT.${S}`].p.clone().lerp(P[`DEF-TOE.${S}`].p, 0.4);
+const SUPPORTS = (() => {
+  const pies = P => [['L', 'R'].map(S => ({ p: footPt(P, S), part: 'foot.' + S, emax: 0.10 * K() }))];
+  const manos = P => ['L', 'R'].map(S => ({ p: gripOf(P, S), part: 'hand.' + S, emax: 0 }));
+  const enManos = (P, L) => ['L', 'R'].map(S => ({ p: gripOf(P, S), f: V(0, -L / 2, 0), part: 'hand.' + S, tipo: 'carga' }));
+  return {
+    stand: (P, ex, out, L) => ({ cargas: [{ p: out.bar.center.clone(), f: V(0, -L, 0), part: 'trunkUp', tipo: 'carga' }], vert: pies(P) }),
+    hinge: (P, ex, out, L) => ({ cargas: enManos(P, L), vert: pies(P) }),
+    row: (P, ex, out, L) => ({ cargas: enManos(P, L), vert: pies(P) }),
+    hang: P => ({ cargas: [], vert: [manos(P)] }),
+    cable: (P, ex, out, L) => {
+      const dir = out.pulley.clone().sub(out.maneral?.hook || out.bar.center).normalize(), one = POSES.exercises[ex].meta?.hand, lados = one ? [one] : ['L', 'R'];
+      return { cargas: lados.map(S => ({ p: gripOf(P, S), f: dir.clone().multiplyScalar(L / lados.length), part: 'hand.' + S, tipo: 'carga' })), fijo: ['pelvis', 'foot.L', 'foot.R', ...(JALON(ex) ? ['thigh.L', 'thigh.R'] : [])] };   // jalón: los muslos, bajo el rodillo
+    },
+    seat: (P, ex, out, L) => {
+      const dir = out.F.plateTravel.clone().normalize(); if (dir.dot(midOf(P, 'DEF-THIGH01.L', 'DEF-THIGH01.R').sub(out.plate)) < 0) dir.negate();   // de la plataforma a la cadera
+      return { cargas: ['L', 'R'].map(S => ({ p: footPt(P, S), f: dir.clone().multiplyScalar(L / 2), part: 'foot.' + S, tipo: 'carga' })), fijo: ['pelvis', 'trunkUp'] };
+    },
+  };
+})();
+// Reparto entre apoyos verticales (§14.5): la reacción total iguala el peso y pasa por la vertical del centro de masas.
+// Un grupo de dos puntos: reparto por cercanía y, lo que sobra en perpendicular, se corrige moviendo el apoyo dentro del pie.
+function apoyosVerticales(forces, grupos) {
+  let Rtot = 0, cx = 0, cz = 0;
+  for (const f of forces) { Rtot -= f.f.y; cx -= f.f.y * f.p.x; cz -= f.f.y * f.p.z; }
+  cx /= Rtot; cz /= Rtot;
+  const res = [], put = (pt, R, e) => res.push({ p: pt.p.clone().add(e), f: V(0, R, 0), part: pt.part, tipo: 'apoyo' });
+  if (grupos.length === 2) {
+    const g = grupos.map(G => [G.reduce((s, q) => s + q.p.x, 0) / G.length, G.reduce((s, q) => s + q.p.z, 0) / G.length]);
+    const dx = g[1][0] - g[0][0], dz = g[1][1] - g[0][1], t = clamp(((cx - g[0][0]) * dx + (cz - g[0][1]) * dz) / (dx * dx + dz * dz));
+    grupos.forEach((G, i) => G.forEach(q => put(q, (i ? t : 1 - t) * Rtot / G.length, V())));
+  } else {
+    const [a, b] = grupos[0], ab = b ? [b.p.x - a.p.x, b.p.z - a.p.z] : [0, 0], l2 = ab[0] * ab[0] + ab[1] * ab[1];
+    const u = !b ? 0 : l2 < 1e-8 ? 0.5 : clamp(((cx - a.p.x) * ab[0] + (cz - a.p.z) * ab[1]) / l2);
+    const e = V(cx - (a.p.x + u * ab[0]), 0, cz - (a.p.z + u * ab[1])); if (e.length() > a.emax) e.setLength(a.emax);
+    put(a, b ? (1 - u) * Rtot : Rtot, e); if (b) put(b, u * Rtot, e);
+  }
+  return res;
+}
+// Capacidades por lado (PC·m, × K()): las cuatro primeras salen de las de solveStand; las demás, de partida.
+// Calibración (prueba 2 de tests/demand.js, contra el modelo de cuatro masas anterior): CAP.knee 0.20 -> 0.23 y CAP.hip 0.275 -> 0.20.
+const CAP = { knee: 0.23, hip: 0.20, hipFrontal: 0.15, ankle: 0.11, lumbar: 0.50, shoulder: 0.12, elbow: 0.08 };
+// Articulaciones (§14.6): `S` = tiene lado L y R · `J` punto · `dist` partes del lado distal · `cap` capacidad de cada componente ·
+// `comp` componentes con signo a partir del momento M y los ejes del cuerpo `a` (positivo = lo que dice el nombre).
+const JOINTS = [
+  { id: 'ankle', S: 1, J: (P, S) => P[`DEF-FOOT.${S}`].p, dist: S => [`foot.${S}`], cap: { plantar: 'ankle' }, comp: (M, a) => ({ plantar: -M.dot(a.xP) }) },
+  { id: 'knee', S: 1, J: (P, S) => P[`DEF-SHIN01.${S}`].p, dist: S => [`shank.${S}`, `foot.${S}`], cap: { ext: 'knee' },
+    comp: (M, a, S, P) => { const h = P[`DEF-THIGH01.${S}`].p, k = P[`DEF-SHIN01.${S}`].p, t = P[`DEF-FOOT.${S}`].p, kS = k.clone().sub(h).cross(t.clone().sub(k));
+      return { ext: M.dot(kS.length() < 1e-4 ? a.xP : kS.normalize()) }; } },
+  { id: 'hip', S: 1, J: (P, S) => P[`DEF-THIGH01.${S}`].p, dist: S => [`thigh.${S}`, `shank.${S}`, `foot.${S}`], cap: { ext: 'hip', add: 'hipFrontal' },
+    comp: (M, a, S) => ({ ext: -M.dot(a.xP), add: (S === 'L' ? 1 : -1) * M.dot(a.nP) }) },
+  { id: 'lumbar', J: (P, S, a) => a.hip.clone().addScaledVector(a.uT, 0.10 * K()), cap: { ext: 'lumbar' },
+    dist: () => ['trunkUp', 'head', 'armU.L', 'armU.R', 'armF.L', 'armF.R', 'hand.L', 'hand.R'], comp: (M, a) => ({ ext: M.dot(a.xT) }) },
+  { id: 'shoulder', S: 1, J: (P, S) => P[`DEF-ARM01.${S}`].p, dist: S => [`armU.${S}`, `armF.${S}`, `hand.${S}`], cap: { flex: 'shoulder', add: 'shoulder', hadd: 'shoulder' },
+    comp: (M, a, S) => { const sg = S === 'L' ? 1 : -1; return { flex: M.dot(a.xT), add: sg * M.dot(a.nT), hadd: sg * M.dot(a.uT) }; } },
+  { id: 'elbow', S: 1, J: (P, S) => P[`DEF-FORARM01.${S}`].p, dist: S => [`armF.${S}`, `hand.${S}`], cap: { flex: 'elbow' },
+    comp: (M, a, S, P) => { const s = P[`DEF-ARM01.${S}`].p, e = P[`DEF-FORARM01.${S}`].p, w = P[`DEF-HAND.${S}`].p, eS = e.clone().sub(s).cross(w.clone().sub(e));
+      return { flex: -M.dot(eS.length() < 1e-4 ? a.xT.clone().negate() : eS.normalize()) }; } },
+];
+// P: pose final · ex: id de la acción · out: lo que devuelve evaluateInner (bar, pulley, maneral, plate, F…)
+// -> { forces: [{ p, f, part, tipo }], joints: [{ id, J, M, comp, d, q, arm, Fr }], act: { quads, … } (recortado 0–1), raw: los mismos doce sin recortar (el doce, `abs`, desde X03-19) }
+function demand(P, ex, out) {
+  const prm = state.per[ex], L = (prm.load ?? 0) / 100, parts = bodyParts(P);
+  const forces = parts.map(q => ({ p: q.c, f: V(0, -q.m, 0), part: q.id, tipo: 'peso' }));
+  const sup = SUPPORTS[EXERCISES[ex].base](P, ex, out, L); forces.push(...sup.cargas);
+  if (sup.vert) forces.push(...apoyosVerticales(forces, sup.vert));
+  const fijo = new Set(sup.fijo || []);
+  // ejes del cuerpo
+  const a = ejesCuerpo(P);
+  const momento = (J, ids, enIds) => { const M = V(), Fr = V(); for (const f of forces) if (ids.has(f.part) === enIds) { M.add(f.p.clone().sub(J).cross(f.f)); Fr.add(f.f); } return [M, Fr]; };
+  const joints = [];
+  for (const j of JOINTS) for (const S of j.S ? ['L', 'R'] : [null]) {
+    const J = j.J(P, S, a), dist = new Set(j.dist(S)), rec = { id: S ? `${j.id}.${S}` : j.id, J, M: null, comp: {}, d: {}, q: null, arm: null, Fr: null };
+    joints.push(rec);
+    // lado distal; si tiene un apoyo fijo se mide con el otro (y se cambia el signo); si los dos lo tienen, no se puede calcular
+    const dFijo = [...dist].some(i => fijo.has(i)), oFijo = parts.some(q => !dist.has(q.id) && fijo.has(q.id));
+    if (dFijo && oFijo) continue;
+    const [Mr, Fr] = momento(J, dist, !dFijo);
+    rec.M = dFijo ? Mr.clone().negate() : Mr; rec.Fr = Fr;
+    rec.comp = j.comp(rec.M, a, S, P);
+    for (const c in rec.comp) rec.d[c] = clamp(Math.abs(rec.comp[c]) / (CAP[j.cap[c]] * K()));
+    if (Fr.length() > 0.02) { rec.q = J.clone().add(Fr.clone().cross(Mr).divideScalar(Fr.lengthSq())); rec.arm = rec.q.distanceTo(J); }
+  }
+  // de momento a demanda: el mayor de los dos lados (una articulación sin calcular aporta 0)
+  const val = (id, c, sg = 1) => Math.max(0, ...joints.filter(j => j.M && (j.id === id || j.id.startsWith(id + '.'))).map(j => sg * j.comp[c]));
+  const beta = Math.max(...['L', 'R'].map(S => P[`DEF-SHIN01.${S}`].p.clone().sub(P[`DEF-THIGH01.${S}`].p).angleTo(V(0, -1, 0)))), deep = clamp(beta / (110 * DEG));
+  // CONVENCIÓN (no física) para bíceps y tríceps en las tracciones: el momento neto del codo sale casi nulo en la dominada (antebrazo vertical
+  // bajo la barra) porque el modelo no ve la fuerza con que las manos tiran a lo largo de una barra fija. Si el hombro extiende o aduce (lo que hace el
+  // dorsal) y el codo está flexionado, el bíceps trabaja en proporción; con el brazo recto (peso muerto) no cambia nada.
+  const codoFlex = clamp(Math.max(...['L', 'R'].map(S => { const sh = P[`DEF-ARM01.${S}`].p, el = P[`DEF-FORARM01.${S}`].p, wr = P[`DEF-HAND.${S}`].p;
+    return el.clone().sub(sh).angleTo(wr.clone().sub(el)); })) / (60 * DEG));
+  // la tabla de músculos con una D recortada (act, lo que usan los tests) o sin recortar (raw, lo que se escala con el pico de la repetición)
+  const musculos = f => {
+    const D = (id, c, cap, sg) => f(val(id, c, sg) / (CAP[cap] * K())), Dsh = (c, sg) => D('shoulder', c, 'shoulder', sg);
+    const hipE = D('hip', 'ext', 'hip'), sinergia = 0.5 * Math.max(Dsh('flex', -1), Dsh('add')) * codoFlex;
+    return {
+      quads: D('knee', 'ext', 'knee'), glutes: hipE * (0.55 + 0.45 * deep) + 0.5 * D('hip', 'add', 'hipFrontal', -1), hams: Math.max(0.6 * hipE, D('knee', 'ext', 'knee', -1)),
+      add: D('hip', 'add', 'hipFrontal') + 0.3 * hipE * (0.3 + 0.7 * deep), erect: D('lumbar', 'ext', 'lumbar'), abs: D('lumbar', 'ext', 'lumbar', -1), calves: D('ankle', 'plantar', 'ankle'),
+      lats: Math.max(Dsh('flex', -1), Dsh('add'), 0.5 * Dsh('hadd', -1)), pecs: Math.max(Dsh('hadd'), 0.5 * Dsh('flex')),
+      delts: Math.max(Dsh('flex'), Dsh('add', -1), 0.5 * Dsh('hadd', -1)), biceps: Math.max(D('elbow', 'flex', 'elbow'), sinergia), triceps: Math.max(0, D('elbow', 'flex', 'elbow', -1) - sinergia),
+    };
+  };
+  const act = musculos(clamp), raw = musculos(x => x);
+  for (const k in act) act[k] = clamp(act[k]);
+  return { forces, joints, act, raw };
+}
+
 /* ---------------- Evaluación de un frame ---------------- */
 function evaluate(ex, s) {
   const base = EXERCISES[ex].base, prm = state.per[ex];
@@ -511,9 +675,25 @@ function evaluate(ex, s) {
   if (base === 'hang' || base === 'cable') { const lo = prm.bottom, hi = Math.max(prm.top, lo + 5); s = (lo + (hi - lo) * ramp(s, lo > 0 ? 0 : 1, hi < 100 ? 0 : 1)) / 100; }
   // agarre con su propia acción (supino: Chinup); el neutro sale de la supina si la hay (los codos ya van hacia delante)
   if (base === 'hang') ex = variantFor(ex, prm.gripType) || (prm.gripType === 'neutro' && variantFor(ex, 'supino')) || ex;
+  if (base === 'cable' && JALON(ex)) ex = variantFor(ex, prm.gripType) || ex;   // jalón: el agarre elige su acción
   // remo: el supino con su acción (barbell_row_supino) si la hay; con barra, el recorrido se corta en el codo máximo (frenando)
   if (base === 'row') { ex = variantFor(ex, prm.gripType) || ex; const c = rowCut(ex); s = c * ramp(s, 1, c < 1 ? 0 : 1); }
   return evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s);
+}
+// Demanda con los ajustes y el cuerpo por defecto (la pose autorada), para enseñar en el panel cuánto cambian las articulaciones (X03-12).
+// SOLO se llama desde frameLoop, nunca desde evaluate/evaluateInner (se llamaría a sí misma). Se cachea por acción y s: la autorada no
+// depende de ajustes ni cuerpo. Las variantes comparten el objeto de ajustes con su acción base (state.per): se cambian todos los alias.
+const DEMDEF = {};
+function evaluateDefault(ex, s) {
+  s = Math.round(s * 200) / 200; const key = ex + '|' + s;
+  if (key in DEMDEF) return DEMDEF[key];
+  const body = state.body, prm = state.per[ex], alias = Object.keys(state.per).filter(k => state.per[k] === prm);
+  try {
+    state.body = DEFAULT_BODY;
+    const def = Object.fromEntries(PARAMS[EXERCISES[ex].base].map(p => [p.id, p.def]));
+    for (const k of alias) state.per[k] = def;
+    return (DEMDEF[key] = evaluate(ex, s).dem);
+  } finally { state.body = body; for (const k of alias) state.per[k] = prm; }
 }
 // s de la animación, sin recorte (el recorte la usa para buscar el corte)
 function evaluateRaw(ex, s) { const saved = CUR_OFF; CUR_OFF = authoredOffsets(ex, s); try { return evaluateInner(ex, s); } finally { CUR_OFF = saved; } }
@@ -550,7 +730,19 @@ function evaluateInner(ex, s) {
     // el CdM objetivo, dentro de la zona cómoda del pie (±6 cm del mediopié): si con esta carga el de las claves cae fuera
     // (salida del peso muerto sin peso: 12 cm detrás), el cuerpo se adelanta pivotando sobre el tobillo hasta meterlo
     const comZone = e => clamp(e, -0.06 * kk, 0.06 * kk);
-    const phi0 = F.phi + (cur.phi - ref.phi), th = clamp(F.th + (hinge ? 0 : cur.th - ref.th) + (thPref - thPref0), -10 * DEG, thLim);
+    const phi0 = F.phi + (cur.phi - ref.phi);
+    let th;
+    if (exd.base === 'stand') {
+      // sentadilla (X03-15): tibia = la de Blender + p · dB. p (0 de pie, 1 en el punto bajo) sigue el ritmo de la animación; dB es cuánto
+      // cambia la tibia ABAJO: lo que cambian cuerpo, anchura, profundidad y barra (dos solveStand en el punto bajo, 0 por defecto) + la
+      // dorsiflexión (manda ella) + «Avance de rodillas» (un extra). Así no hay gesto de tobillo al empezar ni tope que recorte en seco.
+      const { th0, FB } = standRef(ex), thB = FB.th, p = thB - th0 < 2 * DEG ? 0 : clamp((F.th - th0) / (thB - th0));
+      const yawB = (FB.L.yaw - FB.R.yaw) / 2, stB = (FB.L.an.x - FB.R.an.x) / 2, bo = FB.barOff;
+      const refB = solveStand(d0, FB.beta, FB.th, FB.phi, stB, yawB, bo, L, 90 * DEG);
+      const curB = solveStand(d, FB.beta * lerp(1, depth, clamp(FB.beta / (60 * DEG))), FB.th, FB.phi, stB * prm.stance * d.k / d0.k, yawB + (prm.toes ?? 0) * DEG,
+        { du: bo.du * d.k / d0.k + barH / 100, dn: bo.dn * d.k / d0.k }, L, 90 * DEG);
+      th = clamp(F.th + p * (curB.th - refB.th + (d.dorsi - 35) * DEG + prm.knees * DEG), -10 * DEG, 75 * DEG);
+    } else th = clamp(F.th + (hinge ? 0 : cur.th - ref.th) + (thPref - thPref0), -10 * DEG, thLim);
     // cadera: pose autorada + (geometría actual - geometría de referencia)  => exacta con los valores por defecto
     const G = (dd, b, t, st, yw) => { const dx = Math.max(0, st - dd.hipHalf), cv = Math.cos(Math.asin(Math.min(0.95, dx / (dd.Ls + dd.Lt)))), ch = Math.cos(yw * 0.85);
       const kz = dd.Ls * Math.sin(t) * ch, ky = dd.ankleH + dd.Ls * Math.cos(t) * cv; return V(0, ky + dd.Lt * Math.cos(b) * cv, kz - dd.Lt * Math.sin(b) * ch); };
@@ -600,6 +792,13 @@ function evaluateInner(ex, s) {
     for (const n of BN) if (!legSet.has(n)) { pose[n].q = R.clone().multiply(auth[n].q); }
     pose['DEF-HIPS'].p = hipT.clone().add(auth['DEF-HIPS'].p.clone().sub(hipA).applyQuaternion(R));
     fkSub(pose, 'DEF-HIPS');
+    if (cable && prm.curv) {   // curvatura del tronco (X03-20): mitad del giro en SPINE01 y mitad en SPINE02, cada uno arrastra solo a sus hijos; pelvis y piernas quietas
+      // (la spec decía SPINE02 y CHEST, pero con esos pivotes `lumbar.flex`, que mide SPINE01→CHEST, solo sube 4° con +15; con estos, 12°)
+      // ponytail: el eje lateral es X (el tronco no va girado; en el remo a un brazo, con el pecho girado, es una aproximación)
+      const qc = QA(X, prm.curv * DEG / 2);
+      for (const root of ['DEF-SPINE01', 'DEF-SPINE02']) { const c = pose[root].p.clone();
+        for (const n of subtree(root)) { pose[n].q = qc.clone().multiply(pose[n].q); if (n !== root) pose[n].p = pose[n].p.clone().sub(c).applyQuaternion(qc).add(c); } }
+    }
     // piernas
     for (const [S, sgn] of [['L', 1], ['R', -1]]) {
       const Fs = F[S], dYaw = sgn * (prm.toes ?? 0) * DEG;
@@ -698,7 +897,7 @@ function evaluateInner(ex, s) {
       for (const c of subtree(hn)) pose[c].q = Rh.clone().multiply(auth[c].q);
       if (handI) { const h = handI[S]; pose[hn].q = h.q.clone(); for (const c in h.fingers) pose[c].q = h.q.clone().multiply(h.fingers[c]); }
       fkSub(pose, `DEF-SHOULDER.${S}`);
-      if (cable && prm.wrist !== 'autorada') {   // polea: muñeca recta (la mano alineada con el antebrazo, como en reposo)
+      if (cable && prm.wrist !== 'autorada' && !JALON(ex)) {   // polea: muñeca recta (no en el jalón: la mano agarra la barra como en Blender) (la mano alineada con el antebrazo, como en reposo)
         const q0 = pose[hn].q.clone(), fa = `DEF-FORARM0.${S}`, hR = Y.clone().applyQuaternion(REST[hn].q);
         const offW = q => handI ? handI[S].hollow.clone().multiplyScalar(d.k).applyQuaternion(q) : sock.clone().multiplyScalar(d.k).applyQuaternion(q.clone().multiply(REST[hn].q.clone().invert()));
         let qh = q0.clone();
@@ -834,7 +1033,7 @@ function evaluateInner(ex, s) {
     }
     const phi = phiA, { bar, axis } = bA; Object.assign(pose, bA.pose); out.warns.push(...bA.warns);
     if (hinge && prm.feet) { const lift = V(0, prm.feet / 100, 0); for (const n of BN) pose[n].p.add(lift); bar.add(lift); bA.grips.forEach(g => g.add(lift)); }
-    if (hinge) { out.grips = bA.grips; out.impl = one ? 'asa' : prm.impl || 'barra'; }
+    if (hinge) { out.grips = bA.grips; out.impl = one ? 'asa' : JALON(ex) ? 'barra_jalon' : prm.impl || 'barra'; }
     if (hinge && !cable && phi > 85 * DEG && betaH + thH < 45 * DEG) out.warns.push('Bajar tanto con la rodilla tan recta pide unos isquios muy flexibles');
     out.bar = { center: bar, axis };
     if (cable) {   // polea: el cable va de la polea al maneral; indicadores propios (sin centro de masas: sentado)
@@ -846,10 +1045,10 @@ function evaluateInner(ex, s) {
         return { p: V(a.x * prm.stance * kr, a.y, a.z).add(c0), n: V(0, -1, 0).applyQuaternion(Rf), up: V(0, 0, 1).applyQuaternion(Rf) }; });
       out.footPlate = { p: sole[0].p.clone().add(sole[1].p).multiplyScalar(0.5), n: sole[0].n, up: sole[0].up };
       out.pulley = P; out.path = bar.clone(); out.mid = bar.z; out.com = bar.z; out.maneral = bA.man;
-      out.act = { quads: 0, glutes: 0, hams: 0.1, add: 0, erect: 0.25, calves: 0 };
       out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Codo', `${Math.round(out.elbow)}°`], ['Cable', `${Math.round(Math.atan2(c.y, Math.hypot(c.x, c.z)) / DEG)}° sobre la horizontal`],
         ['Polea', `${Math.round(P.y * 100)} cm del suelo`]];
       out.phase = `codo ${Math.round(out.elbow)}°`;
+      out.dem = demand(pose, ex, out); out.act = out.dem.act;
       return out;
     }
     const mf = midfootZ(pose), com = comOffset(pose, bar, L) + mf;
@@ -857,7 +1056,8 @@ function evaluateInner(ex, s) {
     // sin carga: sin la barra delante, el cuerpo queda 12 cm detrás.
     const edge = 0.10 * kk, off = com - mf;
     if (Math.abs(off) > edge) out.warns.push(`Se caería hacia ${off > 0 ? 'delante' : 'atrás'}: el centro de masas queda ${Math.round(Math.abs(off) * 100)} cm ${off > 0 ? 'por delante' : 'por detrás'} del mediopié, fuera del pie${L < 30 ? ' (con tan poca carga, la barra no hace de contrapeso)' : ''}`);
-    out.act = cur.act; out.path = bar.clone(); out.mid = mf; out.com = com;
+    out.path = bar.clone(); out.mid = mf; out.com = com;
+    out.tib = thH;   // tibia que pide el solver, sin redondear (las pruebas la comparan con la de la pose)
     out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Muslo', `${Math.round(betaH / DEG)}°`], ['Tibia', `${Math.round(thH / DEG)}°`],
       ...(hinge ? [['Barra', `${Math.round(bar.y * 100)} cm del suelo`]] : []), ['CdM–mediopié', `${((com - mf) * 100).toFixed(1)} cm`],
       ['Barra–mediopié', `${((bar.z - mf) * 100).toFixed(1)} cm`]];
@@ -923,7 +1123,6 @@ function evaluateInner(ex, s) {
     Object.assign(pose, Pf); out.warns.push(...warns);
     out.bar = { center: barC, axis: ax }; out.mid = barC.z; out.com = comZ(Pf) + barC.z;
     out.path = midOf(Pf, 'DEF-ARM01.L', 'DEF-ARM01.R');
-    out.act = { quads: 0, glutes: 0, hams: 0, add: 0, erect: 0.1, calves: 0 };
     if (handI) out.grips = ['L', 'R'].map(S => handle(S));
     const elbow = 180 - Pf['DEF-ARM01.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p).angleTo(Pf['DEF-HAND.L'].p.clone().sub(Pf['DEF-FORARM01.L'].p)) / DEG;
     out.readout = [['Codo', `${Math.round(elbow)}°`], ['Hombros', `${Math.round((barC.y - out.path.y) * 100)} cm bajo la barra`],
@@ -968,18 +1167,12 @@ function evaluateInner(ex, s) {
       fkSub(pose, `DEF-SHOULDER.${S}`);
     }
     out.plate = plate; out.plateFrame = { normal: nrm, up };
-    // demanda: línea de fuerza por el mediopié, paralela al raíl
-    const rail = F.plateTravel.clone().normalize().negate();
-    const mid = midOf(pose, 'DEF-FOOT.L', 'DEF-FOOT.R'), kneeL = pose['DEF-SHIN01.L'].p, hipM = midOf(pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R');
-    const arm = p => Math.abs(p.clone().sub(mid).cross(rail).x);
-    const Ld = prm.load / 100, kn = kneeL.clone().sub(pose['DEF-THIGH01.L'].p).angleTo(pose['DEF-FOOT.L'].p.clone().sub(kneeL));
-    const deep = clamp(kn / (110 * DEG));
-    out.act = { quads: clamp(Ld * arm(kneeL) / (0.22 * d.k) * 0.4), glutes: clamp(Ld * arm(hipM) / (0.16 * d.k) * (0.35 + 0.65 * deep) * 0.6),
-      hams: clamp(Ld * arm(hipM) / (0.16 * d.k) * 0.3), add: clamp(Ld * arm(hipM) / (0.16 * d.k) * 0.25 * prm.stance), erect: 0.08, calves: clamp(0.1 + Ld * 0.03) };
+    const kn = pose['DEF-SHIN01.L'].p.clone().sub(pose['DEF-THIGH01.L'].p).angleTo(pose['DEF-FOOT.L'].p.clone().sub(pose['DEF-SHIN01.L'].p));
     out.path = plate.clone(); out.mid = null;
     out.readout = [['Rodilla', `${Math.round(kn / DEG)}°`], ['Recorrido total', `${Math.round(T.length() * (prm.depth + prm.startOff / 100 / T.length()) * legR * 100)} cm`]];
     out.phase = `rodilla ${Math.round(kn / DEG)}°`;
   }
+  out.dem = demand(pose, ex, out); out.act = out.dem.act;
   return out;
 }
 
@@ -1004,11 +1197,11 @@ outlineStatic.customProgramCacheKey = () => 'ol-static';
 const withOutline = (geom, mat) => { const g = new THREE.Group(); g.add(new THREE.Mesh(geom, mat)); g.add(new THREE.Mesh(geom, outlineStatic)); return g; };
 
 /* ---- mapa muscular: zonas definidas a partir del esqueleto en reposo (vale para cualquier avatar) ---- */
-const MU = { uAct: { value: [0, 0, 0, 0, 0, 0] }, uHeat: { value: 1 }, uLo: { value: new THREE.Color() }, uMid: { value: new THREE.Color() }, uHi: { value: new THREE.Color() },
-  uHip: { value: V() }, uKnee: { value: V() }, uAnk: { value: V() }, uPelvis: { value: V() }, uChest: { value: V() }, uS: { value: 1 } };
+const MU = { uAct: { value: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, uHeat: { value: 1 }, uLo: { value: new THREE.Color() }, uMid: { value: new THREE.Color() }, uHi: { value: new THREE.Color() },
+  uHip: { value: V() }, uKnee: { value: V() }, uAnk: { value: V() }, uPelvis: { value: V() }, uChest: { value: V() }, uShoulder: { value: V() }, uElbow: { value: V() }, uWrist: { value: V() }, uS: { value: 1 } };
 const GLSL = `
 varying vec3 vRP; varying vec3 vRN;
-uniform float uAct[6]; uniform float uHeat; uniform vec3 uLo, uMid, uHi, uHip, uKnee, uAnk, uPelvis, uChest; uniform float uS;
+uniform float uAct[12]; uniform float uHeat; uniform vec3 uLo, uMid, uHi, uHip, uKnee, uAnk, uPelvis, uChest, uShoulder, uElbow, uWrist; uniform float uS;
 float segD(vec3 p, vec3 a, vec3 b){ vec3 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.); return length(pa-ba*h); }
 float segT(vec3 p, vec3 a, vec3 b){ vec3 ba=b-a; return clamp(dot(p-a,ba)/dot(ba,ba),0.,1.); }
 float st(float x, float e){ return smoothstep(e-0.012, e+0.012, x); }
@@ -1026,9 +1219,23 @@ vec3 muscleColor(vec3 base){
   float glut  = (1.-st(length(gq), 1.)) * st(-n.z, .05) * (1.-st(tt, .3)) * st(p.y, uHip.y - 0.16*uS);
   float calf  = (1.-st(segD(p, uKnee, uAnk), 0.075*uS)) * st(-n.z, .05) * st(segT(p, uKnee, uAnk), .1) * (1.-st(segT(p, uKnee, uAnk), .75));
   float erect = st(p.x, .012*uS) * (1.-st(p.x, .07*uS)) * st(p.y, uPelvis.y+0.03*uS) * (1.-st(p.y, uChest.y)) * st(-n.z, .55);
+  // tracción y empuje (X03-13): el reposo es con los brazos en cruz y las palmas hacia abajo (el brazo va a lo largo de X)
+  float armD = segD(p, uShoulder, uElbow), armT = segT(p, uShoulder, uElbow);
+  float upper = (1. - st(armD, 0.055*uS)) * st(armT, .18) * (1. - st(armT, .92));
+  float biceps  = upper * st(n.z, .05);
+  float triceps = upper * st(-n.z, .05);
+  float delts = (1. - st(length(p - uShoulder), 0.10*uS)) * (1. - st(armT, .22)) * st(p.x, uShoulder.x - 0.04*uS);
+  float torsoX = 1. - st(p.x, uShoulder.x + 0.005*uS);   // dentro del tronco, no en el brazo
+  float pecs = torsoX * st(p.x, .015*uS) * st(n.z, .35) * st(p.y, uShoulder.y - 0.17*uS) * (1. - st(p.y, uShoulder.y - 0.02*uS));
+  float lats = torsoX * st(p.x, .07*uS) * st(-n.z, .25) * st(p.y, uPelvis.y + 0.27*uS) * (1. - st(p.y, uShoulder.y - 0.05*uS));
+  // abdominales (X03-19): delante del tronco, entre la pelvis y el pecho (por debajo del pectoral)
+  float abdo = (1. - st(p.x, .07*uS)) * st(n.z, .35) * st(p.y, uPelvis.y + 0.04*uS) * (1. - st(p.y, uShoulder.y - 0.20*uS));
   vec3 c = base;
+  c = mix(c, heatC(tint, uAct[11]), abdo);
   c = mix(c, heatC(tint, uAct[0]), quads); c = mix(c, heatC(tint, uAct[1]), glut); c = mix(c, heatC(tint, uAct[2]), hams);
   c = mix(c, heatC(tint, uAct[3]), add);   c = mix(c, heatC(tint, uAct[4]), erect); c = mix(c, heatC(tint, uAct[5]), calf);
+  c = mix(c, heatC(tint, uAct[6]), lats); c = mix(c, heatC(tint, uAct[7]), pecs); c = mix(c, heatC(tint, uAct[9]), biceps);
+  c = mix(c, heatC(tint, uAct[10]), triceps); c = mix(c, heatC(tint, uAct[8]), delts);   // el deltoides, el último: va encima
   return c;
 }`;
 function bodyMat(color, heat) {
@@ -1100,18 +1307,20 @@ function manMeshes(name) {
 }
 function placeCable(ex, r) {
   const P = r.pulley, c = r.bar.center, g = r.grips, impl = r.impl, fwd = P.clone().sub(c).setX(0).normalize();
-  CBL.column.scale.y = 2.1; CBL.column.position.set(P.x, 1.05, P.z + 0.1); CBL.wheel.position.copy(P);
+  const jal = impl === 'barra_jalon';   // jalón: la columna va detrás del asiento y un brazo llega hasta la polea (delante del maniquí taparía su pecho de frente)
+  CBL.column.scale.y = 2.1; CBL.column.position.set(P.x, 1.05, jal ? P.z - 0.42 : P.z + 0.1); CBL.wheel.position.copy(P);
   // el cable se engancha delante del maneral: en el vértice del triángulo, en el centro de la barra o en el nudo de la cuerda
   const mn = r.maneral;   // maneral del .blend: su malla, pivotando en el gancho
   for (const k in MANMESH) MANMESH[k].forEach(o => { o.visible = false; });
   if (mn) manMeshes(mn.mesh).forEach((o, i) => { o.visible = !!mn.parts[i]; if (o.visible) { o.position.copy(mn.at?.[i] || mn.hook); o.quaternion.copy(mn.parts[i]); } });
-  const hook = mn ? mn.hook : c.clone().addScaledVector(fwd, impl === 'barra_recta' ? 0 : impl === 'cuerda' ? 0.16 : impl === 'asa' ? 0.07 : 0.11);
+  const hook = mn ? mn.hook : c.clone().addScaledVector(fwd, impl === 'barra_recta' || impl === 'barra_jalon' ? 0 : impl === 'cuerda' ? 0.16 : impl === 'asa' ? 0.07 : 0.11);
   strut(CBL.cable, hook, P);
   if (mn) { [CBL.bar, ...CBL.grips, ...CBL.arms, ...CBL.ropes].forEach(m => { m.visible = false; }); placeSeat(ex, r); return; }
   CBL.bar.visible = impl === 'barra_recta'; if (CBL.bar.visible) strut(CBL.bar, c.clone().add(V(-0.36, 0, 0)), c.clone().add(V(0.36, 0, 0)));
-  CBL.grips.forEach((m, i) => { m.visible = impl !== 'barra_recta' && !!g[i]; if (m.visible) strut(m, g[i].clone().add(V(0, -0.06, 0)), g[i].clone().add(V(0, 0.06, 0))); });
+  CBL.grips.forEach((m, i) => { m.visible = impl !== 'barra_recta' && impl !== 'barra_jalon' && !!g[i]; if (m.visible) strut(m, g[i].clone().add(V(0, -0.06, 0)), g[i].clone().add(V(0, 0.06, 0))); });
   CBL.arms.forEach((m, i) => { m.visible = impl === 'triangulo' || impl === 'asa'; if (!m.visible) return;
     if (impl === 'asa') strut(m, g[0].clone().add(V(0, i ? 0.06 : -0.06, 0)), hook); else strut(m, g[i], hook); });   // asa en D: de los extremos del agarre al gancho
+  if (jal) { CBL.arms[0].visible = true; strut(CBL.arms[0], V(P.x, P.y, P.z - 0.42), P); }
   CBL.ropes.forEach((m, i) => { m.visible = impl === 'cuerda'; if (m.visible) strut(m, g[i].clone().add(V(0, 0.06, 0)), hook); });
   placeSeat(ex, r);
 }
@@ -1129,6 +1338,84 @@ const pathMat = new THREE.LineBasicMaterial({ color: 0x2453cf }); const pathLine
 // referencia: esqueleto autorado (para comparar)
 const refMat = new THREE.LineBasicMaterial({ color: 0xe8452a, depthTest: false, transparent: true, opacity: 0.9 });
 const refLines = new THREE.LineSegments(new THREE.BufferGeometry(), refMat); refLines.renderOrder = 5; scene.add(refLines);
+// capas de fuerza (X03-17): resistencia, apoyo y brazos de momento, dibujadas con mallas (grosor de verdad) y con un depósito de mallas que se
+// reutiliza cada frame (se crean las que faltan y se esconden las que sobran: nada de crear geometrías por frame). Equilibrio y trayectoria son
+// midLine y pathLine. Cada capa tiene su color, su botón y su estado (state.lyRes, lySup, lyArm, lyBal, lyPath).
+const layerG = new THREE.Group(); scene.add(layerG);
+const unit = { cyl: new THREE.CylinderGeometry(1, 1, 1, 10), cone: new THREE.ConeGeometry(1, 1, 14), ball: new THREE.SphereGeometry(1, 14, 10) };
+const LAYER = Object.fromEntries([['res', 0x7a3ff2], ['sup', 0x1f9d55], ['arm', 0x1a1e26]].map(([k, c]) => {
+  const mat = new THREE.MeshBasicMaterial({ color: c, depthTest: false, transparent: true }), L = { mat };   // transparente: se pinta después de los discos translúcidos
+  for (const t in unit) { const items = []; let n = 0;
+    L[t] = { begin: () => { n = 0; },
+      next() { if (n === items.length) { const m = new THREE.Mesh(unit[t], mat); m.renderOrder = t === 'cyl' ? 6 : 7; m.frustumCulled = false; layerG.add(m); items.push(m); } const m = items[n++]; m.visible = true; return m; },
+      end: () => { for (let i = n; i < items.length; i++) items[i].visible = false; } }; }
+  return [k, L]; }));
+// cilindro de radio r de a a b (strut deja la escala en (1, largo, 1): el radio va en x y z)
+const bar3 = (L, a, b, r) => { const m = L.cyl.next(); strut(m, a, b); m.scale.x = m.scale.z = r; };
+const cone3 = (L, base, d, h, r) => { const m = L.cone.next(); m.position.copy(base).addScaledVector(d, h / 2); m.quaternion.setFromUnitVectors(Y, d); m.scale.set(r, h, r); };
+const ball3 = (L, p, r) => { const m = L.ball.next(); m.position.copy(p); m.scale.setScalar(r); };
+// flecha: tallo (radio 0,010) y punta de cono (radio 0,028, alto 0,07); sale de `tail` hacia d y acaba en tail + d·len
+const arrow3 = (L, tail, d, len) => { const base = tail.clone().addScaledVector(d, len - 0.07); bar3(L, tail, base, 0.010); cone3(L, base, d, 0.07, 0.028); };
+// resultante de un grupo de fuerzas: vector = su suma; punto = media de sus puntos ponderada por su módulo (null si es nula)
+const resultant = fs => { const f = V(), p = V(); let w = 0; for (const x of fs) { const m = x.f.length(); f.add(x.f); p.addScaledVector(x.p, m); w += m; }
+  return f.length() > 1e-4 && w > 1e-4 ? { f, p: p.divideScalar(w), d: f.clone().normalize() } : null; };
+const actionLine = (L, p, d, half) => bar3(L, p.clone().addScaledVector(d, -half), p.clone().addScaledVector(d, half), 0.0035);
+// etiquetas HTML sobre el lienzo: se reutilizan; se colocan después de render proyectando el punto 3D
+const stageEl = canvas.parentElement, LBL = { items: [], list: [] };
+const label = (text, p, color) => LBL.list.push({ text, p: p.clone(), color });
+function placeLabels() {
+  const w = canvas.clientWidth, h = canvas.clientHeight, placed = [];
+  while (LBL.items.length < LBL.list.length) { const e = document.createElement('div'); e.className = 'flabel'; stageEl.appendChild(e); LBL.items.push(e); }
+  LBL.items.forEach((e, i) => { const l = LBL.list[i]; e.hidden = !l; if (!l) return;
+    const v = l.p.clone().project(camera); let x = (v.x * 0.5 + 0.5) * w, y = (-v.y * 0.5 + 0.5) * h;
+    for (let k = 0; k < 6 && placed.some(q => Math.abs(q[0] - x) < 54 && Math.abs(q[1] - y) < 17); k++) y += 17;   // si dos se pisan, la segunda baja
+    placed.push([x, y]); e.textContent = l.text; e.style.color = l.color; e.style.left = `${x}px`; e.style.top = `${y}px`; });
+  LBL.list.length = 0;
+}
+// ángulo de cada articulación en el 3D (X03-18): las dos direcciones entre las que se mide (rodilla y codo: la prolongación del segmento de arriba y el de abajo,
+// así el arco mide justo la flexión)
+const dv = (P, a, b) => P[b].p.clone().sub(P[a].p);
+const ARCOS = {
+  ankle: (P, S) => [dv(P, `DEF-FOOT.${S}`, `DEF-SHIN01.${S}`), dv(P, `DEF-FOOT.${S}`, `DEF-TOE.${S}`)],
+  knee: (P, S) => [dv(P, `DEF-THIGH01.${S}`, `DEF-SHIN01.${S}`), dv(P, `DEF-SHIN01.${S}`, `DEF-FOOT.${S}`)],
+  hip: (P, S) => [ejesCuerpo(P).hip.clone().sub(P['DEF-SPINE01'].p), dv(P, `DEF-THIGH01.${S}`, `DEF-SHIN01.${S}`)],
+  lumbar: P => [P['DEF-SPINE01'].p.clone().sub(ejesCuerpo(P).hip), dv(P, 'DEF-SPINE01', 'DEF-CHEST')],
+  shoulder: (P, S) => [ejesCuerpo(P).uT.clone().negate(), dv(P, `DEF-ARM01.${S}`, `DEF-FORARM01.${S}`)],
+  elbow: (P, S) => [dv(P, `DEF-ARM01.${S}`, `DEF-FORARM01.${S}`), dv(P, `DEF-FORARM01.${S}`, `DEF-HAND.${S}`)],
+};
+// arco fino de radio 0,08 m en J entre las direcciones d1 y d2
+function arco(L, J, d1, d2) {
+  d1 = d1.clone().normalize(); d2 = d2.clone().normalize();
+  const ax = d1.clone().cross(d2), th = d1.angleTo(d2); if (ax.length() < 1e-4 || th < 0.02) return;
+  ax.normalize(); const N = Math.ceil(th / 0.2); let a = J.clone().addScaledVector(d1, 0.08);
+  for (let i = 1; i <= N; i++) { const b = J.clone().addScaledVector(d1.clone().applyAxisAngle(ax, th * i / N), 0.08); bar3(L, a, b, 0.006); a = b; }
+}
+function drawLayers(dem, prm, P) {
+  for (const k in LAYER) for (const t in unit) LAYER[k][t].begin();
+  if (dem) {
+    // resistencia: UNA flecha por la resultante de las cargas, que acaba en su punto de aplicación (viene de fuera hacia la carga), y su línea de acción
+    const res = state.lyRes && resultant(dem.forces.filter(f => f.tipo === 'carga'));
+    if (res) { const len = clamp(0.35 * res.f.length(), 0.12, 0.6), tail = res.p.clone().addScaledVector(res.d, -len);
+      arrow3(LAYER.res, tail, res.d, len); actionLine(LAYER.res, res.p, res.d, 1.2); if (state.lyNum) label(`${Math.round(prm.load)} % PC`, tail, '#7a3ff2'); }
+    // apoyo: una flecha por cada fuerza de apoyo (sale del punto de apoyo) y la línea de acción de su resultante
+    if (state.lySup) { const ap = dem.forces.filter(f => f.tipo === 'apoyo' && f.f.length() > 1e-4);
+      for (const f of ap) arrow3(LAYER.sup, f.p, f.f.clone().normalize(), clamp(0.35 * f.f.length(), 0.12, 0.6));
+      const r = resultant(ap); if (r) actionLine(LAYER.sup, r.p, r.d, 1.2); }
+    // brazos: bolita en la articulación y segmento grueso hasta la línea de fuerza (los centímetros, solo con «Cifras»). Con una articulación elegida,
+    // solo la suya, su arco de ángulo (X03-18) y su línea de fuerza efectiva (la de la resultante de su lado, contra la que se mide ese brazo)
+    if (state.lyArm) { const lab = {};
+      for (const j of dem.joints) { const [id, S] = j.id.split('.');
+        if (state.joint ? id !== state.joint : !relevant(id)) continue;
+        if (state.joint) arco(LAYER.arm, j.J, ...ARCOS[id](P, S));
+        if (!j.q) continue;
+        ball3(LAYER.arm, j.J, 0.016); bar3(LAYER.arm, j.J, j.q, 0.007); (lab[id] ??= []).push(j);
+        if (state.joint) actionLine(LAYER.arm, j.q, j.Fr.clone().normalize(), 0.8); }
+      // una sola etiqueta por articulación si sus dos lados difieren menos de 1 cm
+      if (state.lyNum) for (const js of Object.values(lab)) { js.sort((a, b) => b.arm - a.arm);
+        js.forEach((j, i) => { if (i === 0 || js[0].arm - j.arm >= 0.01) label(`${Math.round(j.arm * 100)} cm`, j.J.clone().lerp(j.q, 0.5), ''); }); } }
+  }
+  for (const k in LAYER) for (const t in unit) LAYER[k][t].end();
+}
 
 function placeProps(ex, r) {
   const F = r.F; barG.visible = !!r.bar; press.visible = !r.bar;
@@ -1140,7 +1427,7 @@ function placeProps(ex, r) {
   if (footBox.visible) { footBox.scale.y = hp.feet / 100; footBox.position.set(0, hp.feet / 200, r.mid); }
   const impl = r.impl || 'barra', isDb = impl.startsWith('mancuernas');
   const neutral = EXERCISES[ex].base === 'hang' && state.per[ex].gripType === 'neutro' && r.grips;
-  barMesh.visible = impl === 'barra' && !neutral;
+  barMesh.visible = (impl === 'barra' || impl === 'barra_jalon') && !neutral;   // el jalón: la barra de la acción, sin discos
   parallels.visible = !!neutral;
   if (neutral) { const g = r.grips, half = Math.abs(g[0].x - g[1].x) / 2;
     // la mano en el centro del cuerno; la barra transversal, en su extremo de delante y algo más ancha que los cuernos
@@ -1194,6 +1481,7 @@ function initRig(gltf) {
   const R = n => REST[n].p;
   MU.uHip.value.copy(R('DEF-THIGH01.L')); MU.uKnee.value.copy(R('DEF-SHIN01.L')); MU.uAnk.value.copy(R('DEF-FOOT.L'));
   MU.uPelvis.value.copy(R('DEF-HIPS')); MU.uChest.value.copy(R('DEF-CHEST'));
+  MU.uShoulder.value.copy(R('DEF-ARM01.L')); MU.uElbow.value.copy(R('DEF-FORARM01.L')); MU.uWrist.value.copy(R('DEF-HAND.L'));
 }
 let POSE_OVERRIDE = null;
 function applyPose(pose) {
@@ -1205,7 +1493,7 @@ function applyPose(pose) {
 function readTheme() {
   const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
   renderer.setClearColor(new THREE.Color(v('--stage'))); outlineMat.color.set(v('--outline')); outlineStatic.color.set(v('--outline'));
-  lineMat.color.set(v('--path')); pathMat.color.set(v('--path'));
+  lineMat.color.set(v('--path')); pathMat.color.set(v('--path')); LAYER.arm.mat.color.set(v('--ink'));   // los brazos, en tinta (0x1a1e26 en el tema claro)
   MU.uLo.value.set(v('--heat-lo')); MU.uMid.value.set(v('--heat-mid')); MU.uHi.value.set(v('--heat-hi')); padMat.color.set(v('--accent'));
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readTheme);
@@ -1236,7 +1524,7 @@ function slider(host, { id, label, min, max, step, get, set, fmt }) {
 }
 const exHost = document.getElementById('exFields'), bodyHost = document.getElementById('bodyFields');
 function buildExerciseUI() {
-  const ex = EX(); document.querySelector('h1').textContent = ex.name; exHost.innerHTML = '';
+  const ex = EX(); document.querySelector('h1').textContent = ex.name; exHost.innerHTML = ''; state.joint = null;
   for (const p of PARAMS[ex.base]) {
     if (p.hide?.(state.exId)) continue;   // no aplica a este ejercicio (p. ej. el maneral en el remo a un brazo)
     if (!p.options) { slider(exHost, { ...p, id: `p-${p.id}`, get: () => PRM()[p.id], set: v => { PRM()[p.id] = v; } }); continue; }
@@ -1275,21 +1563,92 @@ function setPlaying(on) { state.playing = on; playBtn.innerHTML = on ? ICON_PAUS
 playBtn.addEventListener('click', () => setPlaying(!state.playing));
 const scrub = document.getElementById('scrub'); scrub.addEventListener('input', () => { setPlaying(false); state.s = scrub.value / 1000; });
 const toggle = (id, key) => document.getElementById(id).addEventListener('click', e => { state[key] = !state[key]; e.currentTarget.setAttribute('aria-pressed', String(state[key])); });
-toggle('linesBtn', 'lines'); toggle('heatBtn', 'heat'); toggle('refBtn', 'ref');
+document.getElementById('allJoints').addEventListener('change', e => { state.allJoints = e.target.checked; });
+toggle('heatBtn', 'heat'); toggle('refBtn', 'ref');
+for (const k of ['lyRes', 'lySup', 'lyArm', 'lyBal', 'lyPath', 'lyNum']) toggle(k, k);
 // reproducción: ida, pausa, vuelta, pausa. Lineal: el ritmo (arranque y frenada) ya viene de Blender en los frames exportados
 function repS(t) { const T = 3.7; t %= T; if (t < 1.7) return t / 1.7; if (t < 1.9) return 1; if (t < 3.2) return 1 - (t - 1.9) / 1.3; return 0; }
 
-const MUSCLES = [['quads', 'Cuádriceps'], ['glutes', 'Glúteo mayor'], ['hams', 'Isquiotibiales'], ['add', 'Aductores'], ['erect', 'Erectores'], ['calves', 'Gemelos y sóleo']];
+const MUSCLES = [['quads', 'Cuádriceps'], ['glutes', 'Glúteo mayor'], ['hams', 'Isquiotibiales'], ['add', 'Aductores'], ['erect', 'Erectores'], ['calves', 'Gemelos y sóleo'],
+  ['lats', 'Dorsal'], ['pecs', 'Pectoral'], ['delts', 'Deltoides'], ['biceps', 'Bíceps'], ['triceps', 'Tríceps'], ['abs', 'Abdominales']];
 const mHost = document.getElementById('muscles');
-const mRows = MUSCLES.map(([key, name]) => { const n = document.createElement('div'); n.className = 'n'; n.textContent = name; const b = document.createElement('div'); b.className = 'bar'; const i = document.createElement('i'); b.appendChild(i); const v = document.createElement('div'); v.className = 'v'; mHost.append(n, b, v); return { key, i, v }; });
+const mRows = MUSCLES.map(([key, name]) => { const n = document.createElement('div'); n.className = 'n'; n.textContent = name; const b = document.createElement('div'); b.className = 'bar'; const i = document.createElement('i'); b.appendChild(i); const v = document.createElement('div'); v.className = 'v'; mHost.append(n, b, v); return { key, n, b, i, v }; });
+// papel de cada músculo en cada acción (X03-19): principal (llega al color máximo), secundario (se pinta a la mitad como mucho) o ninguno (no se pinta).
+// Propuesta de partida; el usuario la corrige al probar. ponytail: la tabla vive en el visor hasta que el catálogo (X03-03) tenga la ficha de cada ejercicio; entonces se mueve allí.
+// Las variantes (meta.of) usan la de su ejercicio. Sin tabla (acciones nuevas): principales = los músculos de las articulaciones con acción (GRUPO), secundarios = los demás con raw > 0.
+const PAPEL = {
+  back_squat: { p: ['quads', 'glutes'], s: ['add', 'hams', 'erect', 'calves'] }, leg_press: { p: ['quads', 'glutes'], s: ['add', 'hams', 'calves'] },
+  deadlift: { p: ['glutes', 'hams', 'quads', 'erect'], s: ['add', 'lats', 'calves'] }, romanian_deadlift: { p: ['hams', 'glutes'], s: ['erect', 'add', 'lats'] },
+  barbell_row: { p: ['lats', 'delts', 'biceps'], s: ['erect', 'hams', 'glutes'] }, cable_row: { p: ['lats', 'biceps', 'delts'], s: ['erect'] }, pullup: { p: ['lats', 'biceps'], s: ['delts', 'pecs'] },
+  lat_pulldown: { p: ['lats', 'biceps'], s: ['delts', 'pecs', 'abs'] },   // X03-14, revisada con el usuario
+};
+PAPEL.front_squat = PAPEL.back_squat;
+const SECUNDARIO = 0.5, PAPELX = {};
+const GRUPO = { ankle: ['calves'], knee: ['quads', 'hams'], hip: ['glutes', 'hams', 'add'], lumbar: ['erect', 'abs'], shoulder: ['lats', 'pecs', 'delts'], elbow: ['biceps', 'triceps'] };   // músculos de cada articulación
+const papelDe = ex => PAPEL[ex] || PAPEL[VARIANT(ex)] || PAPELX[ex];
+// lo que se pinta (mapa, barras, gráfica y barras del panel de articulaciones): principal = clamp(raw / PEAK), secundario = SECUNDARIO · eso, el resto 0
+function pinta(ex, raw, peak) {
+  const t = papelDe(ex), o = {};
+  for (const [m] of MUSCLES) o[m] = !t || t.p.includes(m) ? clamp(raw[m] / peak) : t.s.includes(m) ? SECUNDARIO * clamp(raw[m] / peak) : 0;
+  return o;
+}
+// panel «Articulaciones» (X03-12/16/18): la fila dice qué hace la articulación (ángulo anatómico, `anatomia`) y la barra cuánto trabajan sus músculos (GRUPO,
+// lo mismo que pinta el mapa). Claves por articulación: [clave, nombre si el valor más lejos de 0 es positivo, si es negativo]
+const JNAME = { ankle: 'Tobillo', knee: 'Rodilla', hip: 'Cadera', lumbar: 'Lumbar', shoulder: 'Hombro', elbow: 'Codo' };
+const JKEYS = { ankle: [['ankle.dorsi', 'dorsiflexión', 'flexión plantar']], knee: [['knee.flex', 'flexión', 'extensión']], lumbar: [['lumbar.flex', 'flexión', 'extensión']],
+  hip: [['hip.flex', 'flexión', 'extensión'], ['hip.abd', 'abducción', 'aducción']], shoulder: [['shoulder.flex', 'flexión', 'extensión'], ['shoulder.abd', 'abducción', 'aducción']], elbow: [['elbow.flex', 'flexión', 'extensión']] };
+// pico y recorrido de la repetición: el mapa y las barras se escalan con PEAK = mayor `raw` de los músculos PRINCIPALES en los 31 puntos (mínimo 0,05; X03-16/19), para que
+// el más exigido llegue a 1 en su punto más duro; RANGO['knee.flex.L'] = { min, max, ini, fin } de cada ángulo anatómico; ACC[articulación] = tiene acción
+// (algún ángulo suyo recorre ≥ 15° en algún lado). Los rellena computeCurve; repPeak(ex) los calcula para cualquier acción (las pruebas usan el mismo).
+let PEAK = 1, RANGO = {}, ACC = {};
+function repPeak(ex = state.exId) {
+  const curve = [], RG = {}, acc = {};
+  for (let j = 0; j <= 30; j++) {
+    const s = j / 30, r = evaluate(ex, s), an = anatomia(r.pose); curve.push({ s, raw: r.dem.raw, path: r.path.clone() });
+    for (const k in an) { const g = RG[k] ??= { min: Infinity, max: -Infinity }; g.min = Math.min(g.min, an[k]); g.max = Math.max(g.max, an[k]); if (j === 0) g.ini = an[k]; if (j === 30) g.fin = an[k]; }
+  }
+  for (const k in RG) if (RG[k].max - RG[k].min >= 15) acc[k.split('.')[0]] = true;
+  if (!PAPEL[ex] && !PAPEL[VARIANT(ex)]) { const p = Object.keys(acc).flatMap(id => GRUPO[id]); PAPELX[ex] = { p, s: MUSCLES.map(m => m[0]).filter(m => !p.includes(m) && curve.some(c => c.raw[m] > 0)) }; }
+  let peak = 0.05; for (const m of papelDe(ex).p) for (const c of curve) peak = Math.max(peak, c.raw[m]);
+  return { PEAK: peak, RANGO: RG, ACC: acc, curve };
+}
+// articulaciones que se enseñan (panel y capa Brazos): con tabla PAPEL, las que tienen algún músculo principal o secundario (así las piernas de la
+// dominada, que se mueven pero no trabajan, no salen); sin tabla, las que tienen acción. «Ver todas» enseña las demás
+const relevant = id => { if (state.allJoints) return true; const t = PAPEL[state.exId] || PAPEL[VARIANT(state.exId)]; return t ? GRUPO[id].some(m => t.p.includes(m) || t.s.includes(m)) : !!ACC[id]; };
+// `pt` = lo pintado (pinta), `an` = anatomia(pose actual). Los dos lados salen juntos salvo que sus grados actuales difieran más de 10°
+function jointRows(dem, dem0, pt, an) {
+  const rows = [], span = (k, s) => RANGO[k + s].max - RANGO[k + s].min;
+  for (const id in JNAME) {
+    if (!relevant(id)) continue;
+    const sides = id === 'lumbar' ? [''] : ['.L', '.R'], big = k => Math.max(...sides.map(s => span(k, s)));
+    const [k, pos, neg] = JKEYS[id].reduce((a, b) => big(b[0]) > big(a[0]) ? b : a), dom = sides.reduce((a, b) => span(k, b) > span(k, a) ? b : a);
+    const dos = sides.length > 1 && Math.abs(an[k + '.L'] - an[k + '.R']) > 10, d = Math.max(...GRUPO[id].map(m => pt[m]));
+    for (const s of dos ? sides : [dom]) {
+      const R = RANGO[k + s], sg = Math.abs(R.max) >= Math.abs(R.min) ? 1 : -1, lo = sg > 0 ? Math.max(0, R.min) : Math.max(0, -R.max), hi = sg > 0 ? R.max : -R.min;
+      const j = dem.joints.find(x => x.id === id + s), j0 = dem0?.joints.find(x => x.id === id + s); let dif = '';
+      if (j0 && j0.arm !== null && j.arm !== null) { const p = Math.round(100 * (j.arm - j0.arm) / Math.max(Math.abs(j0.arm), 0.02 * K())); if (Math.abs(p) > 3) dif = ` · ${p > 0 ? '+' : '−'}${Math.abs(p)} %`; }
+      rows.push({ id, d, name: `${JNAME[id]}${dos ? (s === '.L' ? ' izq.' : ' dcha.') : ''} · ${sg > 0 ? pos : neg} ${Math.round(lo)}–${Math.round(hi)}°`,
+        text: `${Math.round(sg * an[k + s])}°` + (state.lyNum && j.arm !== null ? ` · ${Math.round(j.arm * 100)} cm` : '') + dif });
+    }
+  }
+  return rows;
+}
+const jHost = document.getElementById('joints'), jRows = [];
+function setJointRows(rows) {
+  while (jRows.length < rows.length) { const n = document.createElement('div'); n.className = 'n'; const b = document.createElement('div'); b.className = 'bar'; const i = document.createElement('i'); b.appendChild(i); const v = document.createElement('div'); v.className = 'v'; v.style.whiteSpace = 'nowrap'; jHost.append(n, b, v); const r = { n, b, i, v, id: null }; jRows.push(r);
+    for (const e of [n, b, v]) e.addEventListener('click', () => { state.joint = state.joint === r.id ? null : r.id; }); }   // elegir una articulación para trazarla (X03-17)
+  jRows.forEach((r, k) => { const x = rows[k]; r.n.hidden = r.b.hidden = r.v.hidden = !x; if (!x) return; r.id = x.id; for (const e of [r.n, r.b, r.v]) e.classList.toggle('sel', state.joint === x.id); r.n.textContent = x.name; r.i.style.width = `${(x.d * 100).toFixed(1)}%`; r.v.textContent = x.text; });
+}
 const spark = document.getElementById('spark');
 function computeCurve() {
-  const curve = []; for (let j = 0; j <= 30; j++) { const s = j / 30, r = evaluateAt(s); curve.push({ s, q: r.act.quads, g: r.act.glutes, path: r.path.clone() }); }
-  const pts = k => curve.map(c => `${(c.s * 300).toFixed(1)},${(72 - c[k] * 66).toFixed(1)}`).join(' ');
-  spark.innerHTML = `<line x1="0" y1="72" x2="300" y2="72" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/><line x1="0" y1="39" x2="300" y2="39" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/><polyline points="${pts('q')}" fill="none" stroke="var(--heat-hi)" stroke-width="2" vector-effect="non-scaling-stroke"/><polyline points="${pts('g')}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/><line id="cursor" x1="0" y1="0" x2="0" y2="76" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".5"/>`;
+  const R = repPeak(); PEAK = R.PEAK; RANGO = R.RANGO; ACC = R.ACC;
+  // la gráfica dibuja los dos primeros músculos principales del ejercicio (X03-19)
+  const [m1, m2 = m1] = papelDe(state.exId).p, nom = m => MUSCLES.find(x => x[0] === m)[1];
+  document.getElementById('sparkLg').innerHTML = `<span style="color:var(--heat-hi)">${nom(m1)}</span><span style="color:var(--accent)">${nom(m2)}</span>`;
+  const curve = R.curve, pts = k => curve.map(c => `${(c.s * 300).toFixed(1)},${(72 - pinta(state.exId, c.raw, PEAK)[k] * 66).toFixed(1)}`).join(' ');
+  spark.innerHTML = `<line x1="0" y1="72" x2="300" y2="72" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/><line x1="0" y1="39" x2="300" y2="39" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/><polyline points="${pts(m1)}" fill="none" stroke="var(--heat-hi)" stroke-width="2" vector-effect="non-scaling-stroke"/><polyline points="${pts(m2)}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/><line id="cursor" x1="0" y1="0" x2="0" y2="76" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".5"/>`;
   pathLine.geometry.dispose(); pathLine.geometry = new THREE.BufferGeometry().setFromPoints(curve.map(c => c.path));
 }
-function evaluateAt(s) { const saved = state.s; state.s = s; try { return evaluate(state.exId, s); } finally { state.s = saved; } }
 const jsonEl = document.getElementById('json');
 function renderJSON() { const r2 = v => Math.round(v * 100) / 100; jsonEl.textContent = JSON.stringify({ ejercicio: state.exId, pose: 'autorada (Blender)', ajustes: Object.fromEntries(Object.entries(PRM()).map(([k, v]) => [k, r2(v)])) }, null, 2); }
 document.getElementById('copyBtn').addEventListener('click', async e => { const btn = e.currentTarget; try { await navigator.clipboard.writeText(jsonEl.textContent); btn.textContent = 'Copiado'; } catch { const r = document.createRange(); r.selectNodeContents(jsonEl); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); btn.textContent = 'Seleccionado'; } setTimeout(() => btn.textContent = 'Copiar JSON', 1500); });
@@ -1310,8 +1669,10 @@ function frameLoop(now) {
   scrub.value = Math.round(state.s * 1000);
   const r = evaluate(state.exId, state.s); window.__last = r;
   applyPose(POSE_OVERRIDE ? POSE_OVERRIDE() : r.pose); placeProps(state.exId, r);
-  const a = r.act; MU.uAct.value = [a.quads, a.glutes, a.hams, a.add, a.erect, a.calves]; MU.uHeat.value = state.heat ? 1 : 0; MU.uS.value = 1;
-  midLine.visible = state.lines && r.mid !== null; if (r.mid !== null) midLine.position.z = r.mid; pathLine.visible = state.lines;
+  const pt = pinta(state.exId, r.dem.raw, PEAK);   // relativo al pico de la repetición y al papel de cada músculo (X03-16/19)
+  MU.uAct.value = MUSCLES.map(([m]) => pt[m]); MU.uHeat.value = state.heat ? 1 : 0; MU.uS.value = 1;
+  midLine.visible = state.lyBal && r.mid !== null; if (r.mid !== null) midLine.position.z = r.mid; pathLine.visible = state.lyPath;
+  drawLayers(r.dem, PRM(), r.pose);
   // referencia autorada
   refLines.visible = state.ref;
   if (state.ref) { const A = withBody(DEFAULT_BODY, () => authoredPose(state.exId, state.s)); const pts = []; for (const n of BN) { const P = PARENT[n]; if (P && !/FINGER|THUMB|PALM/.test(n)) pts.push(A[P].p, A[n].p); } refLines.geometry.dispose(); refLines.geometry = new THREE.BufferGeometry().setFromPoints(pts); }
@@ -1322,7 +1683,11 @@ function frameLoop(now) {
   renderer.render(scene, camera);
   readout.innerHTML = r.readout.map(([l, v]) => `<span class="chip"><b>${l}</b>${v}</span>`).join('') + r.warns.map(w => `<span class="chip warn">${esc(w)}</span>`).join('');
   phaseLbl.textContent = `${Math.round(state.s * 100)}% · ${r.phase}`; demandAt.textContent = `en el ${Math.round(state.s * 100)}%`;
-  mRows.forEach(m => { const v = a[m.key]; m.i.style.width = `${(v * 100).toFixed(1)}%`; m.v.textContent = `${Math.round(v * 100)}`; });
+  const papel = papelDe(state.exId);   // principales primero, secundarios con el nombre en gris, el resto oculto
+  mRows.forEach((m, i) => { const v = pt[m.key], k = papel.p.includes(m.key) ? 0 : papel.s.includes(m.key) ? 1 : 2;
+    for (const e of [m.n, m.b, m.v]) { e.hidden = k === 2; e.style.order = k * 100 + i; } m.n.classList.toggle('sec', k === 1);
+    m.i.style.width = `${(v * 100).toFixed(1)}%`; m.v.textContent = `${Math.round(v * 100)}`; });
+  placeLabels(); setJointRows(r.dem ? jointRows(r.dem, isDefault() ? null : evaluateDefault(state.exId, state.s), pt, anatomia(r.pose)) : []);   // evaluateDefault solo desde aquí
   const cur = document.getElementById('cursor'); if (cur) { cur.setAttribute('x1', state.s * 300); cur.setAttribute('x2', state.s * 300); }
   requestAnimationFrame(frameLoop);
 }
@@ -1331,5 +1696,5 @@ const loading = document.getElementById('loading');
 const bin = Uint8Array.from(atob(document.getElementById('model-b64').textContent.trim()), c => c.charCodeAt(0));
 new THREE.GLTFLoader().parse(bin.buffer, '', gltf => { initRig(gltf); loading.hidden = true; buildExerciseUI(); window.__ready = true; requestAnimationFrame(frameLoop); },
   err => { loading.textContent = 'No se ha podido cargar el modelo 3D. Recarga la página para reintentarlo.'; console.error(err); });
-window.__dbg = { camera, plates, state, RIG, THREE, setOverride: f => { POSE_OVERRIDE = f; }, evaluate, authoredPose, POSES, REST, BN, withBody, DEFAULT_BODY, features, PRM, EXERCISES };
+window.__dbg = { camera, plates, state, RIG, THREE, setOverride: f => { POSE_OVERRIDE = f; }, evaluate, authoredPose, POSES, REST, BN, withBody, DEFAULT_BODY, features, PRM, EXERCISES, demand, bodyParts, comOffset, midfootZ, evaluateDefault, MU, repPeak, anatomia, PAPEL, pinta, papelDe };
 })();

@@ -1,5 +1,6 @@
-"""Jalón al pecho (spec X03-05): acción `lat_pulldown` (agarre prono), tipo de base `libre`; después, `cable` con la polea
-arriba (X01 §2.13). Las variantes de agarre son acciones propias que salen de este mismo script: `lat_pulldown_supino.py`
+"""Jalón al pecho (spec X03-05): acción `lat_pulldown` (agarre prono), tipo de base `cable` desde X03-20 (antes `libre`): la polea
+arriba (`ff_pulley`: en la vertical de la barra del frame 1, 0,45 m por encima) y `ff_impl = 'barra_jalon'` (el visor no dibuja
+maneral: la barra es la de la acción). Las variantes de agarre son acciones propias que salen de este mismo script: `lat_pulldown_supino.py`
 y `lat_pulldown_neutro.py`.
 
 Las manos CUELGAN DE LA BARRA (ARM_IK_parent = 5, como en la banca y la dominada): se anima el control BARRA y las manos van
@@ -18,7 +19,8 @@ Se usa igual que deadlift.py: panel FormFit, Text Editor › Run Script, o
 import math
 from mathutils import Vector, Matrix
 
-META = ('lat_pulldown', 'libre', 'Jalón al pecho')
+META = ('lat_pulldown', 'cable', 'Jalón al pecho')
+TOP = {}   # la barra en el frame 1 (f, z), para la polea de `setup`
 DEG = math.pi / 180
 PARAMS = {
     'SEAT_Z':      (0.45, 0.38, 0.55, 'Asiento, altura (m)'),
@@ -68,6 +70,7 @@ def make(grip):
                     r = L * (1.0 if where == 'top' else p['ARMS_10'])
                     bar = sh + Vector((p['BAR_F'], math.sqrt(max(1e-6, r ** 2 - dx ** 2 - p['BAR_F'] ** 2))))
                 F.place_bar(bar.x, bar.y)
+                if where == 'top': TOP['bar'] = (bar.x, bar.y)
                 F.grip_bar(F.W(bar.x, bar.y), p['GRIP_HALF'], hand, pole_dir=POLE[grip])
                 print(f'  jalón {grip} {where}: hombros z {sh.y:.2f} · barra f {bar.x:.2f} z {bar.y:.2f}')
             return posar
@@ -77,7 +80,7 @@ def make(grip):
                 (30, pose(p['TRUNK_END'] * DEG, p['SCAP_DOWN'], 'chest'))]
 
     def setup(F, act, p):
-        act['ff_status'] = 'borrador'; act['ff_plan'] = 'cable'
+        act['ff_status'] = 'borrador'; act['ff_pulley'] = [TOP['bar'][0], TOP['bar'][1] + 0.45]; act['ff_impl'] = 'barra_jalon'
         act['ff_mano'] = {'prono': 'colgado_prono', 'supino': 'colgado_supino', 'neutro': 'colgado_neutro'}[grip]
         if grip != 'prono':
             act['ff_variant_of'] = 'lat_pulldown'; act['ff_axis'] = 'grip'; act['ff_value'] = grip; act['ff_grip'] = grip

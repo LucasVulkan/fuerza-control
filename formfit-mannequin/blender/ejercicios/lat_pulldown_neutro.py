@@ -7,7 +7,7 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lat_pulldown as B
 
-META = ('lat_pulldown_neutro', 'libre', 'Jalón neutro')
+META = ('lat_pulldown_neutro', 'cable', 'Jalón neutro')
 PARAMS = {**B.PARAMS, 'GRIP_HALF': (0.11, 0.08, 0.50, 'Agarre, media anchura (m)')}
 frames, setup = B.make('neutro')
 

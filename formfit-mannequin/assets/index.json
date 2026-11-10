@@ -76,28 +76,25 @@
    "plan": "bench"
   },
   "lat_pulldown": {
-   "base": "libre",
+   "base": "cable",
    "nombre": "Jalón al pecho",
    "estado": "borrador",
-   "mano": "colgado_prono",
-   "plan": "cable"
+   "mano": "colgado_prono"
   },
   "lat_pulldown_neutro": {
-   "base": "libre",
+   "base": "cable",
    "nombre": "Jalón neutro",
    "estado": "borrador",
    "mano": "colgado_neutro",
-   "plan": "cable",
    "de": "lat_pulldown",
    "eje": "grip",
    "valor": "neutro"
   },
   "lat_pulldown_supino": {
-   "base": "libre",
+   "base": "cable",
    "nombre": "Jalón supino",
    "estado": "borrador",
    "mano": "colgado_supino",
-   "plan": "cable",
    "de": "lat_pulldown",
    "eje": "grip",
    "valor": "supino"
