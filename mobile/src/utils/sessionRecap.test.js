@@ -330,3 +330,29 @@ describe('volumeDeltas', () => {
     expect(volumeDeltas([]).size).toBe(0);
   });
 });
+
+describe('recapStats — peso efectivo (T12 §5.3)', () => {
+  const ASSISTED = { equipment: ['pullup_bar'], progressionDirection: 'decrease' };
+  const BARBELL  = { equipment: ['barbell'] };
+  const mk = (weight, extra = {}) => ({ ...entry({ exercises: [{ exerciseId: 'pu', sets: [set(weight, 8)] }] }), bodyWeight: 80, ...extra });
+
+  it('asistida: quitar ayuda sube el volumen (30 kg de ayuda 400, 10 kg 560)', () => {
+    const all = { pu: ASSISTED };
+    expect(recapStats(mk(30), { allExercises: all }).volume).toBe(400);
+    expect(recapStats(mk(10), { allExercises: all }).volume).toBe(560);
+  });
+  it('el peso corporal de respaldo vale si la sesión no lo trae', () => {
+    expect(recapStats(mk(30, { bodyWeight: undefined }), { allExercises: { pu: ASSISTED }, fallbackBodyWeight: 80 }).volume).toBe(400);
+  });
+  it('sin peso corporal una asistida no suma; con barra suma el apuntado', () => {
+    expect(recapStats(mk(30, { bodyWeight: undefined }), { allExercises: { pu: ASSISTED } }).volume).toBe(0);
+    expect(recapStats(mk(30, { bodyWeight: undefined }), { allExercises: { pu: BARBELL } }).volume).toBe(240);
+  });
+  it('las sub-series de dropset usan el mismo peso efectivo', () => {
+    const e = { ...entry({ exercises: [{ exerciseId: 'pu', sets: [{ ...set(30, 8), drops: [set(20, 4)] }] }] }), bodyWeight: 80 };
+    expect(recapStats(e, { allExercises: { pu: ASSISTED } }).volume).toBe(400 + 60 * 4);
+  });
+  it('sin allExercises se comporta como antes', () => {
+    expect(recapStats(mk(30)).volume).toBe(240);
+  });
+});

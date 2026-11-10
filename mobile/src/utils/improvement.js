@@ -47,6 +47,18 @@ export function seriesMetric(logs, def) {
   return hasWeight ? 'kg' : 'reps';
 }
 
+/**
+ * La métrica de la «Mejora» (T12 §5.1): la de `seriesMetric`, salvo que sea `kg` y
+ * haya al menos dos sesiones con 1RM estimado: así subir reps con el mismo peso
+ * también cuenta. El detalle del ejercicio, donde la métrica se elige a mano, no la usa.
+ */
+export function improvementMetric(logs, def) {
+  const metric = seriesMetric(logs, def);
+  if (metric !== 'kg') return metric;
+  const withE1rm = (logs ?? []).filter(({ exercise }) => metricValue(exercise?.sets, 'e1rm', def) !== null);
+  return withE1rm.length >= 2 ? 'e1rm' : metric;
+}
+
 /** Valor de una sesión en una métrica dada; `null` = hueco. */
 export function metricValue(sets, metric, def) {
   const done = sets?.filter(isLogged) ?? [];
@@ -111,25 +123,30 @@ export function computeOverallImprovement(workoutLog, allExercises) {
     l.exercises.filter((e) => e.sets.some(isLogged)).map((e) => e.exerciseId)))];
   const improvements = [];
   for (const id of ids) {
-    const pct = linearRegressionPct(getExerciseLogsFrom(id, workoutLog), allExercises[id]);
+    const logs = getExerciseLogsFrom(id, workoutLog);
+    const pct = linearRegressionPct(logs, allExercises[id], improvementMetric(logs, allExercises[id]));
     if (pct !== null) improvements.push(pct);
   }
   if (!improvements.length) return null;
   return Math.round(improvements.reduce((a, b) => a + b, 0) / improvements.length);
 }
 
-/** % medio de la última sesión frente a la anterior, ejercicio a ejercicio. */
+/**
+ * % medio de la última sesión frente a la anterior, ejercicio a ejercicio: cada
+ * ejercicio se compara con la sesión anterior más reciente que lo contiene
+ * (T12 §5.2), no con la anterior del log, que en un A/B no lo trae.
+ */
 export function computeLastLoadDelta(workoutLog, allExercises) {
   if (workoutLog.length < 2) return null;
   const sorted = [...workoutLog].sort((a, b) => a.timestamp - b.timestamp);
   const last   = sorted[sorted.length - 1];
-  const prev   = sorted[sorted.length - 2];
+  const earlier = sorted.slice(0, -1).reverse();
   const improvements = [];
   for (const lastEx of last.exercises) {
-    const prevEx = prev.exercises.find((e) => e.exerciseId === lastEx.exerciseId);
+    const prevEx = earlier.map((l) => l.exercises.find((e) => e.exerciseId === lastEx.exerciseId)).find(Boolean);
     if (!prevEx) continue;
     const def     = allExercises[lastEx.exerciseId];
-    const metric  = seriesMetric([{ exercise: prevEx }, { exercise: lastEx }], def);
+    const metric  = improvementMetric([{ exercise: prevEx }, { exercise: lastEx }], def);
     const lastVal = metricValue(lastEx.sets, metric, def);
     const prevVal = metricValue(prevEx.sets, metric, def);
     if (lastVal === null || !prevVal) continue;

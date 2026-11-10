@@ -212,8 +212,8 @@ export default function SessionRecapScreen({ navigation, route }) {
   }, [entry, workoutLog, allExercises, profileBodyWeight]);
 
   const volumePct = useMemo(
-    () => (entry ? volumeDeltas(workoutLog).get(entry.id) ?? null : null),
-    [entry, workoutLog],
+    () => (entry ? volumeDeltas(workoutLog, { allExercises, fallbackBodyWeight: profileBodyWeight }).get(entry.id) ?? null : null),
+    [entry, workoutLog, allExercises, profileBodyWeight],
   );
 
   if (!entry) return null;
@@ -260,7 +260,7 @@ export default function SessionRecapScreen({ navigation, route }) {
     ? program.stages[athleteProgress(program, client).currentStageIndex]?.name
     : null;
 
-  const stats  = recapStats(entry);
+  const stats  = recapStats(entry, { allExercises, fallbackBodyWeight: profileBodyWeight });
   // Los mayores primero, por cuánto mejoran en proporción: +2 reps sobre 10
   // pesa más que +2,5 kg sobre 90.
   const prs = detectPRs(entry, workoutLog)

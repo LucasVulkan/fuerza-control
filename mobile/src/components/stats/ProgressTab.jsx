@@ -25,7 +25,7 @@ import { useStore }      from '../../../store/useStore';
 import { spacing, textStyles, withOpacity, getCardRadii } from '../../theme';
 import { useTheme, useThemedStyles } from '../../useTheme';
 import {
-  getExerciseLogsFrom, seriesMetric, linearRegressionPct, computeOverallImprovement,
+  getExerciseLogsFrom, improvementMetric, linearRegressionPct, computeOverallImprovement,
   computeLastLoadDelta,
 } from '../../utils/improvement';
 import { volumeChange } from '../../utils/trainingLoad';
@@ -77,7 +77,7 @@ function ExerciseStatCard({ exerciseId, def, allLogs, periodLogs, isFirst, isLas
   const sessionsCount  = (periodLogs ?? effectiveLogs).length;
   const name           = def ? (i18n.language === 'en' ? (def.nameEn ?? def.name) : def.name) : '—';
   const improvePct     = useMemo(
-    () => linearRegressionPct(periodLogs ?? effectiveLogs, def, seriesMetric(effectiveLogs, def)),
+    () => linearRegressionPct(periodLogs ?? effectiveLogs, def, improvementMetric(effectiveLogs, def)),
     [periodLogs, effectiveLogs, def]
   );
 
@@ -186,7 +186,7 @@ export default function ProgressTab({ baseLog, programTemplateIds, allExercises,
     [filteredLog, allExercises]
   );
   // Por alcance y SIN recortar por periodo: con 1M no habria «las 4 anteriores».
-  const volImprovePct = useMemo(() => volumeChange(filteredLogScope), [filteredLogScope]);
+  const volImprovePct = useMemo(() => volumeChange(filteredLogScope, { allExercises }), [filteredLogScope, allExercises]);
 
   // Display strings — deltas con signo: accent/accent50 si >=0 o null, orange si <0.
   const improveStr   = improvePct !== null ? `${improvePct > 0 ? '+' : ''}${improvePct}%` : '—';

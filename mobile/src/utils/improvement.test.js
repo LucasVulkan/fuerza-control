@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   seriesMetric, metricValue, linearRegressionPct, computeOverallImprovement,
-  computeExPR, computeExSessionDeltas, lastSessionDelta, computeLastLoadDelta,
+  computeExPR, computeExSessionDeltas, lastSessionDelta, computeLastLoadDelta, improvementMetric,
 } from './improvement';
 
 const BODYWEIGHT = { equipment: ['bench'] };            // puente de glúteo
@@ -69,5 +69,32 @@ describe('improvement — una métrica por serie (qa-sep-pantallas U25)', () => 
     const sets = [set(0, 12), set(0, 10), set(0, 8)];
     expect(metricValue(sets, 'reps', BODYWEIGHT)).toBe(30);
     expect(metricValue(sets, 'repsMax', BODYWEIGHT)).toBe(12);
+  });
+});
+
+describe('T12-03 — Mejora por 1RM estimado y última sesión por ejercicio', () => {
+  const session = (ts, exercises) => ({ timestamp: ts, exercises });
+  const SQ = { equipment: ['barbell'] };
+
+  it('§5.1 100 kg pasando de 8 a 12 reps en cinco sesiones: Mejora positiva (antes 0 %)', () => {
+    const workoutLog = [8, 9, 10, 11, 12].map((r, i) => session(i + 1, [{ exerciseId: 'sq', sets: [set(100, r)] }]));
+    const logs = workoutLog.map((l) => ({ exercise: l.exercises[0] }));
+    expect(linearRegressionPct(logs, SQ)).toBe(0);
+    expect(improvementMetric(logs, SQ)).toBe('e1rm');
+    expect(computeOverallImprovement(workoutLog, { sq: SQ })).toBe(11);
+  });
+
+  it('§5.1 con una sola sesión con 1RM sigue en kg', () => {
+    const logs = [log(1, [set(100, 5)]), log(2, [set(110, 20)])];
+    expect(improvementMetric(logs, SQ)).toBe('kg');
+  });
+
+  it('§5.2 programa A/B: la última sesión se compara con la anterior que tiene cada ejercicio', () => {
+    const workoutLog = [
+      session(1, [{ exerciseId: 'a', sets: [set(100, 5)] }]),
+      session(2, [{ exerciseId: 'b', sets: [set(50, 5)] }]),
+      session(3, [{ exerciseId: 'a', sets: [set(110, 5)] }]),
+    ];
+    expect(computeLastLoadDelta(workoutLog, { a: SQ, b: SQ })).toBe(10);
   });
 });

@@ -2106,7 +2106,7 @@ export default function ClientsScreen() {
 
   // Delta de tonelaje por sesión — sobre el log completo del cliente, no sobre
   // `filteredLog`: el filtro de periodo no debe cambiar contra qué se compara.
-  const clientDeltas = useMemo(() => volumeDeltas(clientBaseLog), [clientBaseLog]);
+  const clientDeltas = useMemo(() => volumeDeltas(clientBaseLog, { allExercises, fallbackBodyWeight: clientBodyWeight }), [clientBaseLog, allExercises, clientBodyWeight]);
 
   const exercisesWithLogs = useMemo(() => {
     return [...new Set(

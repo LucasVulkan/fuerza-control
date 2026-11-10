@@ -5,6 +5,7 @@
  * PRs are computed on the fly from the workout log — no extra storage.
  */
 import { epley1RM } from './oneRm';
+import { effectiveWeight } from './effectiveWeight';
 
 const num = (v) => {
   const n = parseFloat(v);
@@ -28,18 +29,30 @@ export function doneDrops(set) {
  * Planned comes from entry.plannedSets (captured at save time — skipped
  * exercises are absent from `exercises`, so it can't be derived from them);
  * older entries fall back to the per-exercise totals.
+ *
+ * El volumen usa el peso que de verdad se mueve (`effectiveWeight`, T12 §5.3):
+ * en una asistida el peso apuntado es la ayuda. Si no se puede calcular (falta
+ * el peso corporal) una asistida no suma y el resto suma el apuntado. Sin
+ * `allExercises` se suma el apuntado, como antes.
  */
-export function recapStats(entry) {
+export function recapStats(entry, { allExercises = null, fallbackBodyWeight = null } = {}) {
   let volume = 0, setsDone = 0, fallbackPlanned = 0;
+  const bw = entry.bodyWeight ?? fallbackBodyWeight;
   for (const ex of entry.exercises ?? []) {
+    const def = allExercises?.[ex.exerciseId];
+    const weightOf = (piece) => {
+      if (!def) return num(piece.weight);
+      const eff = effectiveWeight(piece, def, bw);
+      return eff ?? (def.progressionDirection === 'decrease' ? null : num(piece.weight));
+    };
     const done = doneSets(ex);
     setsDone        += done.length;
     fallbackPlanned += Math.max(ex.totalSets ?? 0, done.length);
     for (const s of done) {
-      const w = num(s.weight), r = num(s.reps);
+      const w = weightOf(s), r = num(s.reps);
       if (w > 0 && r > 0) volume += w * r;
       for (const d of doneDrops(s)) {
-        const dw = num(d.weight), dr = num(d.reps);
+        const dw = weightOf(d), dr = num(d.reps);
         if (dw > 0 && dr > 0) volume += dw * dr;
       }
     }
@@ -136,7 +149,7 @@ export function detectPRs(entry, workoutLog) {
  *
  * @returns {Map<string, number|null>} id de la entrada → % (null = sin referencia)
  */
-export function volumeDeltas(log) {
+export function volumeDeltas(log, opts) {
   const byTemplate = new Map();
   for (const e of [...(log ?? [])].sort((a, b) => a.timestamp - b.timestamp)) {
     if (!e.sessionTemplateId || e.sessionTemplateId === '__free__') continue;
@@ -147,7 +160,7 @@ export function volumeDeltas(log) {
   for (const entries of byTemplate.values()) {
     let prev = null;
     for (const e of entries) {
-      const vol = recapStats(e).volume;
+      const vol = recapStats(e, opts).volume;
       out.set(e.id, prev > 0 && vol > 0 ? Math.round(((vol - prev) / prev) * 100) : null);
       // Una sesión sin tonelaje (solo peso corporal) no sirve de referencia:
       // arrastraría el 0 y la siguiente saldría con un delta absurdo.

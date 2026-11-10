@@ -103,7 +103,7 @@ export default function HistoryList() {
   }, [activeProgram, scope, selectedStageIds, programTemplateIds, hasStages]);
 
   // Una sola pasada para TODA la lista: por tarjeta sería O(n²).
-  const deltas = useMemo(() => volumeDeltas(workoutLog), [workoutLog]);
+  const deltas = useMemo(() => volumeDeltas(workoutLog, { allExercises, fallbackBodyWeight: profile.bodyWeight ?? null }), [workoutLog, allExercises, profile.bodyWeight]);
 
   const letterOf = (e) => (isFreeEntry(e) ? FREE : getEffectiveTemplate(e.sessionTemplateId)?.label ?? null);
 
