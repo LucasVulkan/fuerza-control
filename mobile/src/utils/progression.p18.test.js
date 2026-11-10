@@ -68,12 +68,12 @@ describe('P18-01 — Peso por reglas: casos de la spec (§8)', () => {
   });
 
   // P18 §8, caso 8
-  it('caso 8: RPE máx. 8, 12/12/12 a RPE 8/9/9,5 → mantén, RPE medio 8,8', () => {
+  it('caso 8: RPE máx. 8, 12/12/12 a RPE 8/9/9,5 → mantén, la serie más dura fue a RPE 9,5', () => {
     const c = cfg(3, 10, 12, { evaluation: { mode: 'rpe', maxRpe: 8 } });
     const sets = [['12', '8'], ['12', '9'], ['12', '9.5']].map(([reps, rpe]) => ({ weight: '60', reps, rpe, done: true }));
     const chip = getProgression(c, BB, sets, tk);
     expect(chip).toMatchObject({ type: 'hold', suggestedWeight: 60, reason: 'rpe' });
-    expect(chip.why).toContain('"rpe":8.8');
+    expect(chip.why).toContain('"rpe":9.5');
   });
 
   // P18 §8, caso 9

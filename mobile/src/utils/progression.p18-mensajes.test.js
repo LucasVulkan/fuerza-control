@@ -47,7 +47,7 @@ describe('P18 §6 — la línea del porqué (es)', () => {
   // P18 §8, caso 8 (el decimal sale con punto, como el resto de cifras de la app)
   it('Mantener, freno de RPE', () => {
     expect(why(dbl(3, 8, 12, { evaluation: { mode: 'rpe', maxRpe: 8 } }), BB, ses(62.5, [12, 12, 12], [8, 9, 9.5])))
-      .toBe('Llegaste arriba, pero con RPE medio 8.8 (máx. 8)');
+      .toBe('Llegaste arriba, pero una serie fue a RPE 9.5 (máx. 8)');
   });
   // P18 §8, caso 5
   it('Bajar, fallo grande', () => {

@@ -1,5 +1,5 @@
 import { describe, it, test, expect } from 'vitest';
-import { getProgression, resolveProgressionConfig, progressionRule, progressionHistory, isTimed, LEGACY_TYPE_MAP } from './progression';
+import { getProgression, progressionChip, resolveProgressionConfig, progressionRule, progressionHistory, isTimed, LEGACY_TYPE_MAP } from './progression';
 import { EXERCISE_LIBRARY as LIB } from '../data/exerciseLibrary';
 
 // getProgression builds an i18n message via t(); we only assert chip.type,
@@ -974,5 +974,67 @@ describe('I01-01 — huecos de mutación', () => {
     const time = { sets: 3, minTime: 20, maxTime: 40, inputType: 'weight_time', progression: { type: 'weight' } };
     expect(progressionRule(time, BB, tk)).toBe(
       'progression.rule.weightUp{"inc":"2.5 kg","when":"progression.rule.whenAll","goal":"20 s"}progression.rule.weightDown');
+  });
+});
+
+describe('T12-01 — motor de progresión', () => {
+  const tk = (k, o) => `${k}${o ? JSON.stringify(o) : ''}`;
+  const rowsOf = (weight, reps, rpe = '') => reps.map((r) => ({ weight, reps: String(r), rpe, done: true }));
+
+  it('§3.1 Reps: la descarga no cuenta; 12/12/10 → descarga 12/12 → la meta sale de 34, no de 24', () => {
+    const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'reps' } };
+    const recent = [{ deload: true, sets: rowsOf('', [12, 12]) }, { sets: rowsOf('', [12, 12, 10]) }];
+    expect(progressionChip(cfg, BB, recent, tk)).toMatchObject({ goal: { total: 37, misses: 0 }, perSet: [13, 12, 12] });
+  });
+  it('§3.1 si todas son de descarga, se calcula como hasta ahora', () => {
+    const cfg = { sets: 2, minReps: 8, maxReps: 12, progression: { type: 'reps' } };
+    expect(progressionChip(cfg, BB, [{ deload: true, sets: rowsOf('', [12, 12]) }], tk).goal.total).toBe(26);
+  });
+
+  it('§3.2 Reps: 12/12/7 con 4 series hoy → total escalado 41, sin salto: 11/10/10/10', () => {
+    const cfg = { sets: 4, minReps: 8, maxReps: 12, progression: { type: 'reps' } };
+    expect(getProgression(cfg, BB, rowsOf('', [12, 12, 7]), tk, { lastGoal: { total: 99, misses: 1 } }))
+      .toMatchObject({ reason: 'first', goal: { total: 41, misses: 0 }, perSet: [11, 10, 10, 10] });
+  });
+  it('§3.2 Reps: 4 series de 10 y hoy 3 → 30: 10/10/10', () => {
+    const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'reps' } };
+    expect(getProgression(cfg, BB, rowsOf('', [10, 10, 10, 10]), tk).perSet).toEqual([10, 10, 10]);
+  });
+
+  it('§3.3 RPE máx. 8 con series a 7 / 7,5 / 9,5 (media 8): mantiene por la serie más dura', () => {
+    const cfg = { sets: 3, minReps: 8, maxReps: 12, progression: { type: 'double', evaluation: { mode: 'rpe', maxRpe: 8 } } };
+    const sets = ['7', '7.5', '9.5'].map((rpe) => ({ weight: '60', reps: '12', rpe, done: true }));
+    expect(getProgression(cfg, BB, sets, tk)).toMatchObject({ type: 'hold', reason: 'rpe', why: 'progression.next.rpeOver{"rpe":9.5,"max":8}' });
+  });
+
+  describe('§3.4 bajar no pasa de lo recién completado', () => {
+    const cfg = { sets: 5, minReps: 5, maxReps: 5, progression: { type: 'double' } };
+    it('5×5 a 100 completado → 102,5 con 5/5/4/3/3 → propone 100, no 92,5', () => {
+      const recent = [{ sets: rowsOf('102.5', [5, 5, 4, 3, 3]) }, { sets: rowsOf('100', [5, 5, 5, 5, 5]) }];
+      expect(progressionChip(cfg, BB, recent, tk)).toMatchObject({ type: 'down', suggestedWeight: 100 });
+    });
+    it('sin la sesión anterior con menos peso, baja el 10 % como siempre', () => {
+      expect(progressionChip(cfg, BB, [{ sets: rowsOf('102.5', [5, 5, 4, 3, 3]) }], tk)).toMatchObject({ type: 'down', suggestedWeight: 92.5 });
+    });
+    it('asistida: no pone más ayuda que la de la sesión anterior completada', () => {
+      const assisted = { progressionDirection: 'decrease', weightStep: 2.5 };
+      const recent = [{ sets: rowsOf('20', [5, 5, 4, 3, 3]) }, { sets: rowsOf('21', [5, 5, 5, 5, 5]) }];
+      expect(progressionChip(cfg, assisted, recent, tk)).toMatchObject({ type: 'down', suggestedWeight: 21 });
+    });
+  });
+
+  describe('§3.5 Por esfuerzo: mantiene pero la última sesión sola movería el peso', () => {
+    const cfg = { sets: 3, minReps: 5, maxReps: 5, progression: { type: 'effort', targetRpe: 8 } };
+    const recent = (last) => [{ sets: rowsOf('100', [5, 5, 5], last) }, { sets: rowsOf('97.5', [5, 5, 5], '7.5') }, { sets: rowsOf('95', [5, 5, 5], '8') }];
+    it('95/97,5/100 a RPE 8/7,5/7: mantiene y dice que otra sesión así sube', () => {
+      expect(progressionChip(cfg, BB, recent('7'), tk)).toMatchObject({ type: 'hold', suggestedWeight: 100, why: 'progression.why_effortAlmostUp' });
+    });
+    it('al revés: dice que otra sesión así baja', () => {
+      const r = [{ sets: rowsOf('100', [5, 5, 5], '9') }, { sets: rowsOf('100', [5, 5, 5], '7.5') }, { sets: rowsOf('100', [5, 5, 5], '7.5') }];
+      expect(progressionChip(cfg, BB, r, tk)).toMatchObject({ type: 'hold', why: 'progression.why_effortAlmostDown' });
+    });
+    it('si la última sola también mantiene, sigue «Clavaste el objetivo»', () => {
+      expect(progressionChip(cfg, BB, [{ sets: rowsOf('100', [5, 5, 5], '8') }], tk).why).toBe('progression.why_effortOnTarget');
+    });
   });
 });

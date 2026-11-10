@@ -258,7 +258,7 @@
     "effortVsLoad": {
       "name": "Effort vs load",
       "what": "Two weekly lines: the work you do (external load) and what it costs you (effort). They come in different units, so each is drawn as the % change from its first 7-day block with sessions in the period. The chip compares the average of the last 4 blocks with the 4 before (always 4 against 4, even over one month); a change of up to ±5 % reads as flat, and only what goes beyond that counts as rising or falling.",
-      "read": "What matters is whether they separate, not where they sit. More work at the same cost means you are adapting. The same work costing more is accumulated fatigue. Both rising is a hard block, and both falling is a deload."
+      "read": "What matters is whether they separate, not where they sit. More work at the same cost means you are adapting. The same work costing more is more effort for no more load, sometimes from accumulated fatigue. Both rising is a hard block, and both falling is a deload."
     },
     "performance": {
       "name": "Performance",
@@ -420,7 +420,7 @@
       "name": "Progression suggestion",
       "what": "The go up, hold or back off hint shown on each exercise during a workout, based on how the last one went.",
       "formula": "qualifying sets ÷ target sets, crossed with the rep range and with RPE if you log it",
-      "rules": "A qualifying set is one that reached the exercise's minimum reps (or time); a set ticked as done without data also counts. With RPE evaluation mode, going up additionally requires the average RPE to stay under the ceiling you set.",
+      "rules": "A qualifying set is one that reached the exercise's minimum reps (or time); a set ticked as done without data also counts. With RPE evaluation mode, going up additionally requires no set to go above the maximum RPE you set.",
       "caveat": "It only looks at your last session of that exercise, not your progression over time. It's a suggestion: ignoring it affects nothing else."
     },
     "estimatedDuration": {
@@ -1914,7 +1914,7 @@
     "rpeFoot": "Only exercises with a logged RPE count.",
     "trend": {
       "adaptation": "adapting",
-      "fatigue": "fatigue",
+      "fatigue": "more effort, no more load",
       "hard": "hard block",
       "deload": "deload",
       "mixed": "no clear pattern"
@@ -2093,7 +2093,7 @@
       "rir_other": "{{count}} reps left in the tank",
       "brakeOpt": { "no": "No", "rpe": "RPE" },
       "brakeMax": "Max RPE",
-      "brakeOnHint": "Even if you complete the rep goal, it won't go up if the average RPE is above {{rpe}}. A high RPE never lowers the weight.",
+      "brakeOnHint": "Even if you complete the rep goal, it won't go up if any set goes above RPE {{rpe}}. A high RPE never lowers the weight.",
       "brakeOffHint": "Goes up when you complete the rep goal, without looking at RPE.",
       "downOpt": { "fail": "Drops 10 %", "failAssist": "Adds 10 %", "never": "Never drops" },
       "downFailHint": "If a set falls below the minimum, the weight stays. It drops 10 % if more than 15 % of the minimum reps are missing or if you miss the minimum two sessions in a row.",
@@ -2790,6 +2790,8 @@
     "why_effortEasier": "You beat the target",
     "why_effortHarder": "You fell short of the target",
     "why_effortOnTarget": "You hit the target",
+    "why_effortAlmostUp": "You beat the target; one more session like this and the weight goes up",
+    "why_effortAlmostDown": "You fell short of the target; one more session like this and the weight goes down",
     "why_effortReached": "You hit the target and every rep",
     "deload_hold": "Deload week: keep {{weightStr}} and leave 3-4 reps in the tank.",
     "why_deload": "This week is a deload",
@@ -2799,7 +2801,7 @@
       "seriesAll_other": "all {{count}} sets",
       "seriesPart": "{{need}} of {{count}} sets",
       "extraRange": " (and the rest {{min}} or more)",
-      "extraRpe": " at an average RPE of {{max}} or less",
+      "extraRpe": " with no set above RPE {{max}}",
       "toUp": "to go up",
       "toUpAgain": "to go up again",
       "toAssist": "to take off assistance",
@@ -2809,7 +2811,7 @@
       "missing_other": "You were {{amount}} short of the minimum ({{min}})",
       "secondFail": "Second day in a row below the minimum",
       "improving": "You're improving ({{total}}); {{next}}",
-      "rpeOver": "You hit the top, but at an average RPE of {{rpe}} (max {{max}})",
+      "rpeOver": "You hit the top, but one set was at RPE {{rpe}} (max {{max}})",
       "vol_first": "Last time you did {{total}}",
       "vol_reached": "You hit the goal: last time you did {{total}}",
       "vol_improving": "You're improving: last time you did {{total}}",
@@ -2823,7 +2825,7 @@
       "effortReach": "Each session's weight is worked out from your estimated 1RM (the average of your last three sessions) to do {{reps}} reps at RPE {{rpe}}. It goes up one step when you meet the target",
       "whenAll": "all sets",
       "whenPart": "{{need}} of {{n}} sets",
-      "whenRpe": "all sets (at an average RPE of {{rpe}} or less)",
+      "whenRpe": "all sets (with no set above RPE {{rpe}})",
       "weightUp": "Adds {{inc}} when {{when}} reach {{goal}}",
       "assistUp": "Takes off {{inc}} when {{when}} reach {{goal}}",
       "weightDown": ". If a set falls below the minimum, the weight stays; it drops 10 % if more than 15 % of the reps are missing or if you miss the minimum two sessions in a row",

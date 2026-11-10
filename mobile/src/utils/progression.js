@@ -21,7 +21,7 @@
  *   evaluation: {
  *     mode:   'all_complete' | 'part' | 'rpe'    // UI: Todas · La mayoría · RPE máx.
  *     need:   2      // 'part': series que tienen que llegar a la meta (ausente: la mayoría)
- *     maxRpe: 8      // 'rpe': sube solo si el RPE medio es ≤ maxRpe
+ *     maxRpe: 8      // 'rpe': sube solo si ninguna serie pasa de maxRpe (la más dura)
  *   }
  *
  *   increment: { type: 'fixed' | 'pct', value: 2.5, pct: 5 }
@@ -253,9 +253,10 @@ function countQualifyingSets(doneSets, targets) {
   }).length;
 }
 
-function avgRpe(doneSets) {
+// El RPE de la serie más dura: una serie a RPE 9,5 no se compensa con otras a 7.
+function maxRpeOf(doneSets) {
   const rpes = doneSets.map((s) => parseFloat(s.rpe)).filter((v) => v > 0);
-  return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
+  return rpes.length ? Math.max(...rpes) : null;
 }
 
 // ── Chip builders (one per progression type) ──────────────────────────────────
@@ -283,12 +284,17 @@ function chipVolume(prog, doneSets, n, t, { timed = false, earlier = [], lastGoa
   if (!total) return null;
   const add = n * Math.max(1, Math.round(computeIncrement(total / n, prog.increment, null)));
   const prev = earlier.length ? sum(earlier[0]) : null;
-  const goal = lastGoal?.total;
+  // Otro número de series que la última vez: la meta es el total escalado, sin
+  // salto (la serie de más ya es la progresión) y sin mirar la cadena (T12 §3.2).
+  const m = loggedSets(doneSets).length;
+  const resized = m !== n;
+  const goal = resized ? null : lastGoal?.total;
 
   let meta = goal;
   let misses = 0;
   let reason;
-  if (goal == null || total >= goal) { meta = total + add; reason = goal == null ? 'first' : 'reached'; }
+  if (resized) { meta = Math.round((total * n) / m); reason = 'first'; }
+  else if (goal == null || total >= goal) { meta = total + add; reason = goal == null ? 'first' : 'reached'; }
   else if (prev == null || total >= prev) reason = prev != null && total > prev ? 'improving' : 'same';
   else if ((lastGoal.misses ?? 0) + 1 >= 2) { meta = total + add; reason = 'secondFail'; }
   else { misses = (lastGoal.misses ?? 0) + 1; reason = 'fail'; }
@@ -340,7 +346,7 @@ function judgeDouble(prog, sets, n, floor, goal, key) {
   const reached = ev.mode === 'part'
     ? atGoal >= need && (goal === floor || vals.every((v) => v >= floor))
     : atGoal === n;
-  const rpe = ev.mode === 'rpe' ? avgRpe(logged) : null;
+  const rpe = ev.mode === 'rpe' ? maxRpeOf(logged) : null;
   const rpeOver = rpe != null && rpe > ev.maxRpe;
   const missing = vals.reduce((a, v) => a + Math.max(0, floor - v), 0);
   return {
@@ -398,8 +404,11 @@ function chipDouble(prog, doneSets, n, floor, goal, t, { timed = false, assist =
   if (cur.missing > 0 && !improved(cur, prev)) {
     const second = prev?.w === w && failed(prev, prev2);
     if ((cur.big || second) && prog.down !== 'never' && w > 0) {
+      // Nunca por debajo de lo recién completado (T12 §3.4); en asistidas, al revés.
+      let down = stepDown(w, prog.step, assist);
+      if (prev?.up && prev.w !== w) down = assist ? (prev.w > w ? Math.min(down, prev.w) : down) : (prev.w < w ? Math.max(down, prev.w) : down);
       return { ...base, type: 'down', icon: '⬇', reason: cur.big ? 'bigFail' : 'secondFail', missing: cur.missing,
-        why: cur.big ? missingLine() : t('progression.next.secondFail'), suggestedWeight: stepDown(w, prog.step, assist) };
+        why: cur.big ? missingLine() : t('progression.next.secondFail'), suggestedWeight: down };
     }
     return { ...base, type: 'hold', reason: 'fail', missing: cur.missing, why: missingLine(), suggestedWeight: w || null };
   }
@@ -465,7 +474,8 @@ function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload
 
   // Exacto (§5.4-bis): el cálculo tal cual, a 0,1 kg; sin escalón no hay
   // «Al llegar» que valga (el peso se mueve con cualquier cambio).
-  const next = prog.exact ? Math.round(raw * 10) / 10 : Math.round(raw / prog.step) * prog.step;
+  const toWeight = (r) => (prog.exact ? Math.round(r * 10) / 10 : Math.round(r / prog.step) * prog.step);
+  const next = toWeight(raw);
   const type = next > maxW ? 'up' : next < maxW ? 'down' : 'hold';
 
   if (!prog.exact && type === 'hold' && prog.effortWhen === 'reach'
@@ -477,7 +487,16 @@ function chipEffort(prog, doneSets, n, targetReps, t, { earlier = [], lastDeload
     };
   }
 
-  const why = { up: 'why_effortEasier', down: 'why_effortHarder', hold: 'why_effortOnTarget' }[type];
+  let why = { up: 'why_effortEasier', down: 'why_effortHarder', hold: 'why_effortOnTarget' }[type];
+  // Mantiene por la media, pero la última sesión sola movería el peso (T12 §3.5).
+  if (type === 'hold' && !lastDeload && lastE1rm !== null) {
+    const rawLast = weightForReps(lastE1rm, targetReps, prog.targetRpe);
+    if (rawLast !== null) {
+      const alone = toWeight(rawLast);
+      if (alone > maxW) why = 'why_effortAlmostUp';
+      else if (alone < maxW) why = 'why_effortAlmostDown';
+    }
+  }
   return {
     // `effort`: la tarjeta lo rotula «Peso objetivo» sea cual sea la dirección.
     effort: true,
@@ -577,6 +596,12 @@ export function getProgression(exConfig, def, lastSets, t, { earlier = [], lastD
  *   primero (`recentExerciseRefs(..., 3).map((r) => r.exercise)`)
  */
 export function progressionChip(exConfig, def, recent, t) {
+  // Reps y Tiempo no cuentan la descarga: su total no es una meta (T12 §3.1).
+  const prog = resolveProgressionConfig(exConfig, def);
+  if ((prog.type === 'reps' || prog.type === 'time') && prog.hold !== 'deload') {
+    const kept = (recent ?? []).filter((ex) => !ex.deload);
+    if (kept.length) recent = kept;
+  }
   const last = recent?.[0]?.sets;
   if (!last?.length) return null;
   try { return getProgression(exConfig, def, last, t, progressionHistory(recent)); }

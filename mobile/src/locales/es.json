@@ -258,7 +258,7 @@
     "effortVsLoad": {
       "name": "Esfuerzo vs carga",
       "what": "Dos líneas semanales: el trabajo que haces (carga externa) y lo que te cuesta (esfuerzo). Van en unidades distintas, así que cada una se pinta como % de cambio desde su primer bloque de 7 días con sesiones del periodo. El chip compara la media de los últimos 4 bloques con la de los 4 anteriores (siempre 4 contra 4, aunque el periodo sea de un mes); un cambio de hasta ±5 % se lee como plano, y solo lo que pasa de ahí cuenta como subida o bajada.",
-      "read": "Lo que importa es si se separan, no dónde están. Más trabajo al mismo coste significa que te estás adaptando. El mismo trabajo costando más es fatiga acumulada. Las dos subiendo es un bloque duro, y las dos bajando, una descarga."
+      "read": "Lo que importa es si se separan, no dónde están. Más trabajo al mismo coste significa que te estás adaptando. El mismo trabajo costando más es más esfuerzo sin más carga, a veces por fatiga acumulada. Las dos subiendo es un bloque duro, y las dos bajando, una descarga."
     },
     "performance": {
       "name": "Rendimiento",
@@ -420,7 +420,7 @@
       "name": "Recomendación de progresión",
       "what": "Es la sugerencia de subir, mantener o bajar que aparece en cada ejercicio durante el entrenamiento, a partir de cómo te fue la última vez.",
       "formula": "series válidas ÷ series objetivo, cruzado con el rango de repeticiones y con el RPE si lo registras",
-      "rules": "Una serie válida es la que alcanzó el mínimo de repeticiones (o de tiempo) del ejercicio; una serie marcada como hecha sin datos también cuenta. Con el modo de evaluación por RPE, subir exige además que el RPE promedio no supere el techo que hayas fijado.",
+      "rules": "Una serie válida es la que alcanzó el mínimo de repeticiones (o de tiempo) del ejercicio; una serie marcada como hecha sin datos también cuenta. Con el modo de evaluación por RPE, subir exige además que ninguna serie supere el RPE máximo que hayas fijado.",
       "caveat": "Mira solo tu última sesión de ese ejercicio, no tu evolución. Es una sugerencia: ignorarla no afecta a nada más."
     },
     "estimatedDuration": {
@@ -1914,7 +1914,7 @@
     "rpeFoot": "Solo cuentan los ejercicios con RPE apuntado.",
     "trend": {
       "adaptation": "adaptación",
-      "fatigue": "fatiga",
+      "fatigue": "más esfuerzo sin más carga",
       "hard": "bloque duro",
       "deload": "descarga",
       "mixed": "sin un patrón claro"
@@ -2093,7 +2093,7 @@
       "rir_other": "Te quedan {{count}} reps en recámara",
       "brakeOpt": { "no": "No", "rpe": "RPE" },
       "brakeMax": "RPE máximo",
-      "brakeOnHint": "Aunque completes el objetivo de reps, no sube si la media de RPE pasa de {{rpe}}. Nunca baja de peso al superar el RPE.",
+      "brakeOnHint": "Aunque completes el objetivo de reps, no sube si alguna serie pasa de RPE {{rpe}}. Nunca baja de peso al superar el RPE.",
       "brakeOffHint": "Sube al completar el objetivo de reps, sin mirar el RPE.",
       "downOpt": { "fail": "Baja un 10 %", "failAssist": "Sube un 10 %", "never": "Nunca baja" },
       "downFailHint": "Si alguna serie no llega al mínimo, el peso se mantiene. Baja un 10 % si faltan más del 15 % de las repeticiones del mínimo o si no llegas al mínimo dos sesiones seguidas.",
@@ -2790,6 +2790,8 @@
     "why_effortEasier": "Rendiste por encima del objetivo",
     "why_effortHarder": "Rendiste por debajo del objetivo",
     "why_effortOnTarget": "Clavaste el objetivo",
+    "why_effortAlmostUp": "Rendiste por encima del objetivo; con otra sesión así, sube el peso",
+    "why_effortAlmostDown": "Rendiste por debajo del objetivo; con otra sesión así, baja el peso",
     "why_effortReached": "Clavaste el objetivo y llegaste a todas las reps",
     "deload_hold": "Semana de descarga: mantén {{weightStr}} y deja 3-4 reps en recámara.",
     "why_deload": "Esta semana toca descarga",
@@ -2799,7 +2801,7 @@
       "seriesAll_other": "las {{count}} series",
       "seriesPart": "{{need}} de {{count}} series",
       "extraRange": " (y el resto a {{min}} o más)",
-      "extraRpe": " con RPE medio de {{max}} o menos",
+      "extraRpe": " sin pasar de RPE {{max}} en ninguna serie",
       "toUp": "para subir",
       "toUpAgain": "para volver a subir",
       "toAssist": "para quitar ayuda",
@@ -2809,7 +2811,7 @@
       "missing_other": "Te faltaron {{amount}} para el mínimo ({{min}})",
       "secondFail": "Segundo día seguido sin llegar al mínimo",
       "improving": "Vas mejorando ({{total}}); {{next}}",
-      "rpeOver": "Llegaste arriba, pero con RPE medio {{rpe}} (máx. {{max}})",
+      "rpeOver": "Llegaste arriba, pero una serie fue a RPE {{rpe}} (máx. {{max}})",
       "vol_first": "La última vez hiciste {{total}}",
       "vol_reached": "Llegaste a la meta: la última vez hiciste {{total}}",
       "vol_improving": "Vas mejorando: la última vez hiciste {{total}}",
@@ -2823,7 +2825,7 @@
       "effortReach": "El peso de cada sesión se calcula con tu 1RM estimado (la media de tus tres últimas sesiones) para hacer {{reps}} reps a RPE {{rpe}}. Sube un escalón cuando cumples el objetivo",
       "whenAll": "todas las series",
       "whenPart": "{{need}} de {{n}} series",
-      "whenRpe": "todas las series (con un RPE medio de {{rpe}} o menos)",
+      "whenRpe": "todas las series (sin pasar de RPE {{rpe}} en ninguna)",
       "weightUp": "Sube {{inc}} cuando {{when}} lleguen a {{goal}}",
       "assistUp": "Quita {{inc}} cuando {{when}} lleguen a {{goal}}",
       "weightDown": ". Si alguna serie no llega al mínimo, el peso se mantiene; baja un 10 % si faltan más del 15 % de las repeticiones o si no llegas al mínimo dos sesiones seguidas",

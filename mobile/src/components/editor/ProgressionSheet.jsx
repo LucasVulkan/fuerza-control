@@ -339,7 +339,7 @@ export default function ProgressionSheet({ name, prog, ctx, minReps, maxReps, mi
 
   const effortRir = 10 - prog.targetRpe;
   // Misma regla que el motor: pasado MAX_RELIABLE_REPS no calcula (§2.3).
-  const effortUnreliable = effort && minReps + effortRir >= MAX_RELIABLE_REPS;
+  const effortUnreliable = effort && minReps + effortRir > MAX_RELIABLE_REPS;
 
   // ── Cómo progresa (§5): cada fila con su valor a la vista y su cuerpo plegado.
   // El escalón del ejercicio es el salto más pequeño que permite su material: a él
