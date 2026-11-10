@@ -226,13 +226,12 @@ describe('recapStats — data types', () => {
 });
 
 describe('detectPRs — data types', () => {
-  it('RPE adjusts effective reps: same weight×reps at lower RPE is an e1RM PR', () => {
-    // 100×5 @RPE9 → effective 6 reps (e1RM 120). Later 100×5 @RPE7 → effective 8 (e1RM ≈ 126.7).
+  it('RPE no hace récord (T12 §4.3): mismo peso×reps apuntado más fácil no es un e1RM PR', () => {
+    // 100×5 @RPE9 y después 100×5 @RPE7: se ha levantado lo mismo.
     const old = entry({ id: 'log_rpe', ts: 400, exercises: [{ exerciseId: 'squat', sets: [set(100, 5, { rpe: '9' })] }] });
     const now = entry({ exercises: [{ exerciseId: 'squat', sets: [set(100, 5, { rpe: '7' })] }] });
     const prs = detectPRs(now, [old, now]);
-    expect(prs).toHaveLength(1);
-    expect(prs[0].kind).toBe('e1rm');
+    expect(prs).toHaveLength(0);
   });
 
   it('history from a DIFFERENT session template counts (PRs are per exercise)', () => {

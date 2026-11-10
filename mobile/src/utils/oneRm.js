@@ -22,10 +22,11 @@ export function epley1RM(weight, reps, rpe = null) {
   let   r = parseInt(reps, 10);
   if (!w || w <= 0 || !r || r < 1) return null;
   const rpeNum = parseFloat(rpe);
-  if (rpeNum >= 5 && rpeNum <= 10) {
-    r = r + (10 - rpeNum); // add reps in reserve
-  }
   if (r > MAX_RELIABLE_REPS) return null;
+  if (rpeNum >= 5 && rpeNum <= 10) {
+    // reps in reserve, con tope: cota baja, como e1rmAtLeast (T12 §4.1)
+    r = Math.min(MAX_RELIABLE_REPS, r + (10 - rpeNum));
+  }
   if (r === 1) return w;
   return w * (1 + r / 30);
 }

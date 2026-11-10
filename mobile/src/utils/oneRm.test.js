@@ -30,9 +30,17 @@ describe('epley1RM', () => {
       expect(epley1RM(100, 5, '10')).toBeCloseTo(116.7, 1);
     });
 
-    test('effective reps over 12 → null', () => {
-      // 10 reps @7 = 13 effective reps
-      expect(epley1RM(100, 10, '7')).toBeNull();
+    test('effective reps over 12 → capped at 12 (cota baja, T12 §4.1)', () => {
+      // 10 reps @7 = 13 effective reps → se cuentan 12: 100 × 1,4
+      expect(epley1RM(100, 10, '7')).toBeCloseTo(140, 6);
+      // 100×11 @8 ya no desaparece; 100×10 sin RPE sigue en 133
+      expect(epley1RM(100, 11, '8')).toBeCloseTo(140, 6);
+      expect(epley1RM(100, 10)).toBeCloseTo(133.3, 1);
+    });
+
+    test('más de 12 reps apuntadas sigue dando null, con o sin RPE', () => {
+      expect(epley1RM(100, 13, '8')).toBeNull();
+      expect(epley1RM(100, 13)).toBeNull();
     });
 
     test('out-of-range RPE is ignored', () => {

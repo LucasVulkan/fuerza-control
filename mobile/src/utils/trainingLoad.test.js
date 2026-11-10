@@ -229,12 +229,19 @@ describe('sessionLoads — carga externa relativa', () => {
     expect(second.external).toBeCloseTo(15 * (60 / ref), 6);
   });
 
-  it('un ejercicio SIEMPRE por encima de 12 reps cae al peso máximo visto', () => {
-    // Epley nunca da e1RM aquí, así que la referencia es el propio peso máximo.
+  it('un ejercicio SIEMPRE por encima de 12 reps cae a una 12RM del peso máximo (T12 §4.2)', () => {
+    // Epley nunca da e1RM aquí: la referencia es maxW × (1 + 12/30), no maxW.
     const e = entry({ id: 'a', ts: T0, exerciseId: 'squat_barbell', sets: [set(50, 20)] });
     const [l] = sessionLoads([e], LIB);
-    expect(l.external).toBeCloseTo(20 * (50 / 50), 6);
+    expect(l.external).toBeCloseTo(20 * (50 / 70), 6);
     expect(l.partial).toBe(false);
+  });
+
+  it('3×15 ya no cuenta casi el doble que 3×12 con el mismo peso (T12 §4.2)', () => {
+    const [a] = sessionLoads([entry({ id: 'a', ts: T0, sets: [set(50, 15), set(50, 15), set(50, 15)] })], LIB);
+    const [b] = sessionLoads([entry({ id: 'b', ts: T0, sets: [set(50, 12), set(50, 12), set(50, 12)] })], LIB);
+    expect(a.external).toBeCloseTo(45 / 1.4, 6);
+    expect(b.external).toBeCloseTo(36 / 1.4, 6);
   });
 
   it('los bloques aportan carga por su duración activa', () => {
@@ -679,6 +686,20 @@ describe('loadSummary', () => {
   it('con sesión hoy, la serie acaba hoy', () => {
     const r = loadSummary([s(T0), s(FRI - 3600000)], EXERCISE_LIBRARY, { now: FRI });
     expect(r.days[r.days.length - 1].day).toBe(new Date(2026, 0, 9).getTime());
+  });
+  it('un sRPE suelto en una de tres sesiones no vacía el panel; con la mitad, sí es interna (T12 §4.4)', () => {
+    const one = [s(T0, { sessionRpe: 7, duration: 3600 }), s(T0 + DAY), s(T0 + 2 * DAY)];
+    const a = loadSummary(one, EXERCISE_LIBRARY, { now: FRI });
+    expect(a.source).toBe('external');
+    expect(a.vs28).not.toBeNull();
+    expect(calendarLoads(one, EXERCISE_LIBRARY, { now: FRI }).source).toBe('external');
+    const half = [s(T0, { sessionRpe: 7, duration: 3600 }), s(T0 + DAY)];
+    expect(loadSummary(half, EXERCISE_LIBRARY, { now: FRI }).source).toBe('internal');
+    expect(calendarLoads(half, EXERCISE_LIBRARY, { now: FRI }).source).toBe('internal');
+  });
+  it('sin sesiones en los 28 días, vale que haya alguna con sRPE en el log', () => {
+    const old = [s(T0 - 60 * DAY, { sessionRpe: 7, duration: 3600 })];
+    expect(loadSummary(old, EXERCISE_LIBRARY, { now: FRI }).source).toBe('internal');
   });
   it('sin sRPE usa la externa', () => {
     const r = loadSummary([s(T0), s(T0 + 2 * DAY)], EXERCISE_LIBRARY, { now: FRI });

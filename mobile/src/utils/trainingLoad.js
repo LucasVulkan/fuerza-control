@@ -15,7 +15,7 @@
  *
  * Todo en kg (unidad de almacenamiento). Nada aquí toca el store.
  */
-import { epley1RM } from './oneRm';
+import { epley1RM, MAX_RELIABLE_REPS } from './oneRm';
 import { blockEstimatedSec } from './conditioningBlocks';
 import { doneSets, recapStats } from './sessionRecap';
 
@@ -234,7 +234,9 @@ function makeRefResolver(idx, weeks) {
         windowE1rm = r.e1rm;
       }
     }
-    return windowE1rm ?? ownE1rm ?? maxW ?? null;
+    // Sin 1RM (siempre a más de 12 reps): al menos una 12RM del peso máximo, no el
+    // máximo mismo, que contaba cada rep como un máximo (T12 §4.2).
+    return windowE1rm ?? ownE1rm ?? (maxW != null ? maxW * (1 + MAX_RELIABLE_REPS / 30) : null);
   };
 }
 
@@ -706,10 +708,23 @@ export function loadState(mean7, mean28) {
 const shiftDay = (day, n) => { const d = new Date(day); d.setDate(d.getDate() + n); return d.getTime(); };
 
 /**
+ * La fuente de la carga (T12 §4.4): interna solo si al menos la mitad de las
+ * sesiones de los 28 días que acaban en `now` tienen sRPE; si no hay sesiones
+ * en esos días, vale que haya alguna en todo el log. Un sRPE suelto no vacía
+ * el panel.
+ */
+function loadSource(log, now) {
+  const all = log ?? [];
+  const recent = all.filter((e) => e.timestamp <= now && e.timestamp > now - 28 * 86400000);
+  const rated = (list) => list.filter((e) => internalLoad(e) != null).length;
+  return (recent.length ? rated(recent) * 2 >= recent.length : rated(all) > 0) ? 'internal' : 'external';
+}
+
+/**
  * La cifra de carga única: la usan la tarjeta CARGA del panel y la de programa de
  * la ficha de cliente.
  *
- * Interna si alguna sesión tiene sRPE, externa si no. Si hoy aún no hay sesión,
+ * Interna o externa según `loadSource`. Si hoy aún no hay sesión,
  * la serie acaba AYER: un viernes por la mañana la semana no puede salir con un
  * día de descanso falso (T11 §3).
  *
@@ -718,7 +733,7 @@ const shiftDay = (day, n) => { const d = new Date(day); d.setDate(d.getDate() + 
  */
 export function loadSummary(log, allExercises, { fallbackBodyWeight = null, now = Date.now() } = {}) {
   const loads = sessionLoads(log ?? [], allExercises, { fallbackBodyWeight });
-  const source = loads.some((l) => l.internal != null) ? 'internal' : 'external';
+  const source = loadSource(log, now);
   const today = startOfDay(now);
   const hasToday = loads.some((l) => startOfDay(l.timestamp) === today);
   const days = dailySeries(loads, { now: hasToday ? now : shiftDay(today, -1) })
@@ -744,7 +759,7 @@ export function loadSummary(log, allExercises, { fallbackBodyWeight = null, now 
  */
 export function calendarLoads(log, allExercises, { fallbackBodyWeight = null, now = Date.now() } = {}) {
   const byDay = new Map();
-  if (!(log ?? []).some((e) => internalLoad(e) != null)) {
+  if (loadSource(log, now) === 'external') {
     const { days } = loadSummary(log, allExercises, { fallbackBodyWeight, now });
     for (const d of days) if (d.sessions > 0) byDay.set(d.day, { load: d.value > 0 ? d.value : null, sessions: d.sessions });
     return { source: 'external', byDay };

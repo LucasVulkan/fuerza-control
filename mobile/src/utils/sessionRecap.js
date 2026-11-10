@@ -51,7 +51,7 @@ export function recapStats(entry) {
 function bestE1RM(sets) {
   let best = null;
   for (const s of sets) {
-    const v = epley1RM(s.weight, s.reps, s.rpe);
+    const v = epley1RM(s.weight, s.reps);
     if (v != null && (best == null || v > best)) best = v;
   }
   return best;
