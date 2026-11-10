@@ -480,7 +480,6 @@ function hingeGrip(ex, s) {
 const ROWD = {};
 const rowUp = (ex, F) => { const [a, b] = ROWD[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => { const f = features(authoredPose(ex, s), ex, s); return f.bar.distanceTo(f.sh); }));
   return clamp((a - F.bar.distanceTo(F.sh)) / (a - b)); };
-const PHI1 = {};   // polea: inclinación autorada del tronco a medio camino entre soltar (s = 0) y tirar (s = 1)
 // codos por maneral (grados, + = abiertos y arriba): con agarre prono la mano solo va en línea con el antebrazo si el codo se abre
 // (a la altura del pectoral, más o menos); supino y neutro, lo más pegados posible, como en la acción (0). Se aplica al empezar y se
 // desvanece al tirar: al final la mano en el tronco ya deja el codo donde toca
@@ -800,12 +799,22 @@ function evaluateInner(ex, s) {
       : socketRest(S).multiplyScalar(d.k).applyQuaternion(qHandA(S).multiply(REST[`DEF-HAND.${S}`].q.clone().invert()));
     const md = cable && manData(ex);
     // ---- construcción de la pose para una inclinación de tronco (y una cadera) dadas
+    // polea, «Balanceo» (X03-22): cada hueso del tronco (pelvis, columna, pecho, cuello, cabeza) escala su giro respecto a como está a
+    // mitad de la repetición (0 % = el tronco entero quieto como a la mitad; 200 % = el doble hacia delante al soltar y hacia atrás al
+    // tirar). Antes se dejaba quieta la línea cadera→hombros: esa línea incluye la protracción de las escápulas y el tronco giraba al
+    // revés para compensarla (8° de pecho y 40° de cabeza con el balanceo a 0). Escápulas y brazos van con el pecho
+    // ponytail: `u`/`n` (dirección del tronco para «Hacia dónde tira») siguen saliendo de la línea autorada; con poco balanceo se desvían unos grados
+    const authQ = {};
+    if (cable && prm.swing !== 100) { const ref = withBody(DEFAULT_BODY, () => authoredPose(ex, 0.5)), t = prm.swing / 100;
+      const sw = n => qPow(auth[n].q.clone().multiply(ref[n].q.clone().invert()), t).multiply(ref[n].q), dC = sw('DEF-CHEST').multiply(auth['DEF-CHEST'].q.clone().invert());
+      const arms = new Set([...subtree('DEF-SHOULDER.L'), ...subtree('DEF-SHOULDER.R')]), legs = new Set([...subtree('DEF-THIGH01.L'), ...subtree('DEF-THIGH01.R')]);
+      for (const n of BN) if (!legs.has(n)) authQ[n] = arms.has(n) ? dC.clone().multiply(auth[n].q) : sw(n); }
     const build = (phi, hipT, barShift = 0) => {
     const pose = clonePose(auth), warns = [];
     const R = QA(X, phi - F.phi);                       // +phi = hacia delante (+Z)
     const hipA = F.hip;
     const legSet = new Set([...subtree('DEF-THIGH01.L'), ...subtree('DEF-THIGH01.R')]);
-    for (const n of BN) if (!legSet.has(n)) { pose[n].q = R.clone().multiply(auth[n].q); }
+    for (const n of BN) if (!legSet.has(n)) { pose[n].q = R.clone().multiply(authQ[n] || auth[n].q); }
     pose['DEF-HIPS'].p = hipT.clone().add(auth['DEF-HIPS'].p.clone().sub(hipA).applyQuaternion(R));
     fkSub(pose, 'DEF-HIPS');
     if (cable && prm.curv) {   // curvatura del tronco (X03-20): mitad del giro en SPINE01 y mitad en SPINE02, cada uno arrastra solo a sus hijos; pelvis y piernas quietas
@@ -968,11 +977,8 @@ function evaluateInner(ex, s) {
     // se mantiene sobre el mediopié igual que en la pose autorada; se corrige con la inclinación del tronco.
     let phiA, bA, betaH = beta, thH = th;
     if (cable) {
-      // polea: la pelvis queda en el asiento (la autorada) y el tronco sigue la animación alrededor de cómo queda al tirar (s = 1):
-      // «Balanceo» escala esa oscilación (0 % = quieto) e «Inclinación» la desplaza. Sin equilibrio: sentado y con los pies apoyados
-      // la oscilación se escala alrededor del punto medio entre el inicio y el final: más balanceo = más adelante al soltar Y más atrás al tirar
-      const phiMid = PHI1[ex] ??= withBody(DEFAULT_BODY, () => (features(authoredPose(ex, 0), ex, 0).phi + features(authoredPose(ex, 1), ex, 1).phi) / 2);
-      phiA = phiMid + (F.phi - phiMid) * prm.swing / 100 + prm.trunk * DEG;
+      // polea: la pelvis queda en el asiento (la autorada). Sin equilibrio: sentado y con los pies apoyados
+      phiA = F.phi + prm.trunk * DEG;   // el balanceo va hueso a hueso (authQ, arriba); aquí solo «Inclinación»
       // (en el jalón «Flexión de rodilla» está escondida y no actúa: con la pelvis deslizada el hombro se aleja del cable)
       // con «Flexión de rodilla» o con otras medidas, los pies no se mueven de la plataforma: la pelvis se desliza por el asiento
       // (delante/atrás) hasta que cada pierna mide lo que dan muslo y tibia con la rodilla autorada + el ajuste. Por defecto, 0

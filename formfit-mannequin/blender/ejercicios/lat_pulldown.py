@@ -31,7 +31,6 @@ PARAMS = {
     'SCAP_UP':     (12.0, 0.0, 25.0, 'Arriba: escápulas subidas (°)'),
     'SCAP_DOWN':   (18.0, 0.0, 30.0, 'Desde el frame 10: escápulas bajadas (°)'),
     'ARMS_10':     (0.97, 0.85, 1.0, 'Frame 10: brazo (hombro-puño) respecto a recto'),
-    'BAR_F':       (0.15, -0.05, 0.25, 'Barra delante de los hombros, arriba y en el frame 10 (m): que baje por delante de la cara'),
     'PULLEY_F':    (0.25, 0.10, 0.40, 'Polea delante de la cadera (m): arriba la barra cuelga de ella (se agarra por delante)'),
     'FACE_F':      (0.26, 0.15, 0.35, 'Frame 20: barra a la altura de la barbilla, delante de los hombros (m)'),
     'FACE_Z':      (0.20, 0.10, 0.30, 'Frame 20: barra sobre los hombros (m)'),
@@ -67,14 +66,12 @@ def make(grip):
                 elif where == 'chest':
                     u = Vector((math.sin(phi), math.cos(phi))); n = Vector((math.cos(phi), -math.sin(phi)))
                     bar = sh - u * p['BAR_TO'] + n * p['TO_FRONT']
-                elif where == 'top':   # la barra bajo la polea (delante de la cadera), con el brazo recto; si no llega, se acerca la polea
-                    f = hip.x + p['PULLEY_F']
-                    while (L ** 2 - dx ** 2 - (f - sh.x) ** 2 < 1e-6) and f > sh.x:
+                else:   # arriba y frame 10 (escápulas abajo, brazo casi recto): la barra bajo la polea (delante de la cadera), sin volver atrás;
+                    # si el brazo no llega, se acerca la polea
+                    r = L * (1.0 if where == 'top' else p['ARMS_10']); f = hip.x + p['PULLEY_F']
+                    while (r ** 2 - dx ** 2 - (f - sh.x) ** 2 < 1e-6) and f > sh.x:
                         f -= 0.005; print(f'  AVISO: el brazo no llega a PULLEY_F; polea a {f - hip.x:.3f} m')
-                    bar = Vector((f, sh.y + math.sqrt(max(1e-6, L ** 2 - dx ** 2 - (f - sh.x) ** 2))))
-                else:
-                    r = L * p['ARMS_10']
-                    bar = sh + Vector((p['BAR_F'], math.sqrt(max(1e-6, r ** 2 - dx ** 2 - p['BAR_F'] ** 2))))
+                    bar = Vector((f, sh.y + math.sqrt(max(1e-6, r ** 2 - dx ** 2 - (f - sh.x) ** 2))))
                 F.place_bar(bar.x, bar.y)
                 if where == 'top': TOP['bar'] = (bar.x, bar.y)
                 F.grip_bar(F.W(bar.x, bar.y), p['GRIP_HALF'], hand, pole_dir=POLE[grip])
