@@ -7,7 +7,7 @@ const idx = JSON.parse(fs.readFileSync(path.join(root, 'assets/index.json'), 'ut
 const lib = fs.readFileSync(path.join(root, '../mobile/src/data/exerciseLibrary.js'), 'utf8');
 const FICHAS = [...lib.matchAll(/\bid: '(\w+)'/g)].map(m => m[1]);
 
-const VISOR = ['stand', 'seat', 'hinge', 'hang', 'row', 'cable'];   // bases con su lógica en runtime.js (`libre`: X03-02)
+const VISOR = ['stand', 'seat', 'hinge', 'hang', 'row', 'cable', 'floor', 'split', 'bench'];   // bases con su lógica en runtime.js (`libre`: X03-02; floor, split y bench: X03-07)
 const POSE = { ok: 'lista', revisar: 'revisar', borrador: 'borrador' };
 const A = idx.acciones, H = idx.manos;
 const pose = id => (A[id] ? POSE[A[id].estado] || 'borrador' : 'falta');

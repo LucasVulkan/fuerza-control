@@ -152,7 +152,7 @@ const rank = (s) => peso[[...s][0]] ?? 9;
 
 // ── Specs ─────────────────────────────────────────────────────────────────────
 const clave = (lineas, nombre) => {
-  const l = lineas.slice(0, 30).find((x) => x.startsWith(`> ${nombre}:`));
+  const l = lineas.slice(0, 60).find((x) => x.startsWith(`> ${nombre}:`));
   return l ? l.slice(nombre.length + 3).trim() : '';
 };
 

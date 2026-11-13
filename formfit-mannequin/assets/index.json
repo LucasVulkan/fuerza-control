@@ -22,18 +22,16 @@
    "valor": "supino"
   },
   "bench_press": {
-   "base": "libre",
+   "base": "bench",
    "nombre": "Press de banca",
    "estado": "ok",
-   "mano": "barra_press",
-   "plan": "bench"
+   "mano": "barra_press"
   },
   "bulgarian_split_squat": {
-   "base": "libre",
+   "base": "split",
    "nombre": "Sentadilla búlgara",
    "estado": "ok",
-   "mano": "28",
-   "plan": "split"
+   "mano": "28"
   },
   "cable_row": {
    "base": "cable",
@@ -69,11 +67,10 @@
    "mano": "barra_espalda"
   },
   "hip_thrust": {
-   "base": "libre",
+   "base": "bench",
    "nombre": "Hip thrust",
    "estado": "ok",
-   "mano": "barra_pm",
-   "plan": "bench"
+   "mano": "barra_pm"
   },
   "lat_pulldown": {
    "base": "cable",
@@ -112,11 +109,10 @@
    "mano": "colgado_prono"
   },
   "push_up": {
-   "base": "libre",
+   "base": "floor",
    "nombre": "Flexiones",
    "estado": "ok",
-   "mano": "palma_plana",
-   "plan": "floor"
+   "mano": "palma_plana"
   },
   "romanian_deadlift": {
    "base": "hinge",

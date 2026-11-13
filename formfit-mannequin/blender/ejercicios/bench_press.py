@@ -1,4 +1,4 @@
-"""Press de banca con barra (spec X03-05): acción `bench_press`, tipo de base `libre` hasta que exista `bench` (X03-07).
+"""Press de banca con barra (spec X03-05): acción `bench_press`, tipo de base `bench` (X03-07; antes `libre`).
 Tumbado boca arriba en el banco (FF_banco, lo coloca la acción), pies en el suelo a los lados. Frame 1: barra arriba con los
 brazos rectos sobre los hombros; frame 30: barra en el pecho, a la altura del esternón, codos hacia abajo y hacia los pies.
 
@@ -9,7 +9,7 @@ Es una base: arco de la espalda, escápulas, cabeza, codos y manos se retocan a 
 import math
 from mathutils import Vector
 
-META = ('bench_press', 'libre', 'Press de banca')
+META = ('bench_press', 'bench', 'Press de banca')
 DEG = math.pi / 180
 PARAMS = {
     'BENCH_Z':    (0.43, 0.35, 0.50, 'Banco, altura (m)'),
@@ -53,7 +53,8 @@ def frames(F, p):
 
 
 def setup(F, act, p):
-    act['ff_status'] = 'borrador'; act['ff_mano'] = 'barra_press'; act['ff_plan'] = 'bench'
+    act['ff_status'] = 'borrador'; act['ff_mano'] = 'barra_press'
+    act['ff_apoyos'] = 'banco;pie.L+pie.R'; act['ff_carga'] = 'manos'; act['ff_carga_pc'] = 80   # X03-14: dónde se apoya y dónde va la carga (demanda en `libre`)
 
 
 if __name__ == '__main__':

@@ -105,6 +105,48 @@ input[type=range]{width:100%;margin:2px 0;accent-color:var(--accent);height:22px
 .stats .chip{backdrop-filter:none}
 pre{margin:0;padding:10px 12px;background:var(--track);border-radius:8px;font:12px/1.5 var(--mono);overflow-x:auto;color:var(--ink)}
 .copy{align-self:flex-start;margin-top:8px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:6px 10px;font:600 12px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+/* Afinado (X03-27, panel nuevo en X03-28): solo con ?editor */
+section[hidden]{display:none}
+.field input[type=range]:disabled{opacity:.45}
+.afstrip{display:flex;flex-direction:column;gap:6px;background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:9px 11px;font:600 13px/1.3 var(--body)}
+.afstrip.ro{background:var(--warn-bg);color:var(--warn-ink)}
+.afstrip button{align-self:flex-start;border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:4px 8px;font:600 12px/1 var(--body);cursor:pointer}
+.afrow{display:flex;gap:8px;align-items:stretch}
+.afrow .seg{flex:1}
+.afhold{flex:none;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:0 12px;font:600 12px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;touch-action:none;user-select:none}
+.afhold:active,.afhold[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.afseg{flex-wrap:wrap}
+.afseg button{flex:1 1 auto;white-space:nowrap}
+.afdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle}
+.seg button .afdot{background:var(--accent)}
+.afhelp{display:block;font-size:11px;line-height:1.35;color:var(--muted)}
+.afcurve{display:block;width:100%;height:44px;margin-top:4px;background:var(--chip);border-radius:5px}
+.afcurve polyline{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
+.afcurve .z{stroke:var(--line);stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.afcurve .now{stroke:var(--ink);stroke-width:1;opacity:.5;vector-effect:non-scaling-stroke}
+.afcurve circle{fill:var(--panel);stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
+.afcurve circle.on{fill:var(--accent)}
+.afx{border:0;background:none;color:var(--muted);font:600 14px/1 var(--body);cursor:pointer;padding:0 2px;margin-left:6px}
+.afx:hover{color:var(--ink)}
+.aflist{display:flex;flex-direction:column;gap:2px}
+.aflist>div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:baseline;font-size:12px;padding:3px 4px;cursor:pointer;border-radius:4px}
+.aflist>div:hover{background:var(--track)}
+.aflist .v{font:500 12px var(--mono);color:var(--ink)}
+.aflist .c{color:var(--muted)}
+.afsave{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.afsave .copy{margin-top:0}
+.afsave .copy.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.afsave .copy:disabled{opacity:.45;cursor:default}
+.afsave select{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:5px 6px;font:12px var(--body)}
+.afstate{font-size:12px;color:var(--muted)}
+.afstate.dirty{color:var(--warn-ink);font-weight:600}
+.edrange{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:6px;align-items:center}
+.edrange input[type=number]{width:100%;min-width:0;box-sizing:border-box;font:11px var(--mono);padding:2px 3px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink)}
+.edtools{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.edtools button{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:5px;padding:2px 7px;font:600 11px/1.3 var(--body);cursor:pointer}
+.edtools .gap{flex:1}
+.edtools .lim{font-size:11px;color:var(--warn-ink)}
+.field.oc{opacity:.5}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 @media (max-width:860px){
@@ -157,6 +199,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       </div>
     </section>
 
+    <section id="afinado" hidden>
+      <h2>Afinado <small id="afAct"></small></h2>
+      <div id="afBody" class="stack"></div>
+    </section>
+
     <section>
       <h2>Ajustes del ejercicio <small id="defNote"></small></h2>
       <div id="exFields" class="stack"></div>
@@ -173,6 +220,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 
     <section>
       <h2>Articulaciones <small><label><input type="checkbox" id="allJoints"> Ver todas</label></small></h2>
+      <p class="hint" id="reparto" style="margin-bottom:8px" hidden></p>
       <div class="muscles" id="joints"></div>
     </section>
 

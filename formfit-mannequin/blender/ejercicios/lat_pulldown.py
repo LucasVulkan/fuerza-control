@@ -49,7 +49,10 @@ def make(grip):
         F.socket('L')
         hand = {S: Matrix.Rotation(TURN[grip][i] * DEG, 3, 'Z') @ OVER[S] for i, S in enumerate('LR')}
         hip = Vector((0.0, p['SEAT_Z'] + p['HIP_UP']))
-        L = F.arm_len('L') * 0.99; dx = p['GRIP_HALF'] - F.H('DEF-ARM01.L').x
+        # alcance: del hombro a la MUÑECA (no al hueco del puño): con la mano girada sobre la barra (supino, neutro) el hueco no queda en
+        # la línea del brazo, y medir hasta él dejaba la barra de arriba fuera del alcance (brazo tieso y la mano 2 cm fuera de la barra)
+        L = (F.H('DEF-HAND.L') - F.H('DEF-ARM01.L')).length * 0.99
+        off = hand['L'] @ F.socket('L')                   # muñeca -> hueco del puño, en el mundo (x, -f, z)
         ankle_f = hip.x + F.Lt * 0.92
 
         def pose(phi, scap, where):
@@ -69,9 +72,11 @@ def make(grip):
                 else:   # arriba y frame 10 (escápulas abajo, brazo casi recto): la barra bajo la polea (delante de la cadera), sin volver atrás;
                     # si el brazo no llega, se acerca la polea
                     r = L * (1.0 if where == 'top' else p['ARMS_10']); f = hip.x + p['PULLEY_F']
-                    while (r ** 2 - dx ** 2 - (f - sh.x) ** 2 < 1e-6) and f > sh.x:
+                    dxw = p['GRIP_HALF'] - off.x - F.pb['DEF-ARM01.L'].head.x          # muñeca respecto al hombro, de lado
+                    h2 = lambda f: r ** 2 - dxw ** 2 - (f + off.y - sh.x) ** 2          # (altura de la muñeca sobre el hombro)²
+                    while h2(f) < 1e-6 and f > sh.x:
                         f -= 0.005; print(f'  AVISO: el brazo no llega a PULLEY_F; polea a {f - hip.x:.3f} m')
-                    bar = Vector((f, sh.y + math.sqrt(max(1e-6, r ** 2 - dx ** 2 - (f - sh.x) ** 2))))
+                    bar = Vector((f, sh.y + off.z + math.sqrt(max(1e-6, h2(f)))))
                 F.place_bar(bar.x, bar.y)
                 if where == 'top': TOP['bar'] = (bar.x, bar.y)
                 F.grip_bar(F.W(bar.x, bar.y), p['GRIP_HALF'], hand, pole_dir=POLE[grip])

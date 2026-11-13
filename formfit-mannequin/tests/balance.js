@@ -92,7 +92,7 @@ const { open } = require('./harness');
     for (const ex of Object.keys(D.EXERCISES).filter(e => D.EXERCISES[e].base === 'cable')) {
       const codo = s => parseFloat(D.evaluate(ex, s).readout.find(x => x[0] === 'Codo')[1]), e0 = codo(0);
       for (const [nm, body, prm] of [['por defecto', {}, {}], ['1,65 m', { height: 165 }, {}], ['1,95 m', { height: 195 }, {}], ['fémur 112%', { femur: 112, tibia: 98, torso: 95 }, {}],
-        ['polea alta', {}, { pulleyH: 80 }], ['polea baja', {}, { pulleyH: -30 }], ['adelante', {}, { trunk: 25 }], ['atrás', {}, { trunk: -15 }], ['quieto', {}, { swing: 0 }], ['balanceo', {}, { swing: 200 }],
+        ['polea alta', {}, { pulleyH: 80 }], ['polea baja', {}, { pulleyH: -30 }], ['adelante', {}, { trunk0: 25, trunk1: 25 }], ['atrás', {}, { trunk0: -15, trunk1: -15 }], ['quieto', {}, { trunk0: 5, trunk1: 5 }], ['balanceo', {}, { trunk0: 25, trunk1: -15 }],
         ['al pecho', {}, { dest: -20 }], ['rodillas', {}, { knees: 40 }], ['curvado', {}, { curv: 20 }], ['erguido', {}, { curv: -15 }], ['barra recta', {}, { impl: 'barra_recta' }], ['barra supina ancha', {}, { impl: 'barra_recta', gripType: 'supino', grip: 1.6 }], ['cuerda', {}, { impl: 'cuerda', pulleyH: 60 }]].filter(([, , prm]) => !(prm.impl && D.POSES.exercises[ex].meta.impl))) {   // el jalón lleva su barra: sin otros manerales
         const sb = { ...S.body }, sp = { ...S.per[ex] }; Object.assign(S.body, body); Object.assign(S.per[ex], prm); S.exId = ex;
         const st = []; let prev, miss;

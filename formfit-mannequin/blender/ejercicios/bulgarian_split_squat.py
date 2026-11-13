@@ -1,4 +1,4 @@
-"""Sentadilla búlgara (spec X03-05): acción `bulgarian_split_squat`, tipo de base `libre` hasta que exista `split` (X03-07).
+"""Sentadilla búlgara (spec X03-05): acción `bulgarian_split_squat`, tipo de base `split` (X03-07; antes `libre`).
 Pie izquierdo delante en el suelo; el derecho detrás, con el empeine sobre el banco (FF_banco, de lado a lado). Manos
 colgando a los lados (con mancuernas: las dibuja la app). Frame 1: arriba, la pierna de delante casi recta; frame 30: abajo,
 el muslo de delante casi horizontal y la rodilla de atrás cerca del suelo.
@@ -10,7 +10,7 @@ Es una base: el pie de atrás en el banco, la cadera y la inclinación del tronc
 import math
 from mathutils import Vector, Matrix
 
-META = ('bulgarian_split_squat', 'libre', 'Sentadilla búlgara')
+META = ('bulgarian_split_squat', 'split', 'Sentadilla búlgara')
 DEG = math.pi / 180
 PARAMS = {
     'BENCH_Z':    (0.45, 0.35, 0.55, 'Banco, altura (m)'),
@@ -55,7 +55,8 @@ def frames(F, p):
 
 
 def setup(F, act, p):
-    act['ff_status'] = 'borrador'; act['ff_mano'] = '28'; act['ff_plan'] = 'split'
+    act['ff_status'] = 'borrador'; act['ff_mano'] = '28'
+    act['ff_apoyos'] = 'pie.L;pie.R'; act['ff_carga'] = 'manos'; act['ff_carga_pc'] = 40   # X03-14: dónde se apoya y dónde va la carga (demanda en `libre`)
 
 
 if __name__ == '__main__':

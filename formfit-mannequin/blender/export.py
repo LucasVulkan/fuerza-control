@@ -27,8 +27,7 @@ def bone_action(a):
     """Solo acciones del rig (canales de pose.bones): mover un objeto con autokey crea acciones de objeto (FF_asa_28.LAction)."""
     return any(fc.data_path.startswith('pose.bones') for l in a.layers for st in l.strips for sl in a.slots if (cb := st.channelbag(sl)) for fc in cb.fcurves)
 ALL = [a.name for a in bpy.data.actions if not a.name.startswith(('00', '_', 'mano.')) and a.frame_range[1] >= FRAMES['end'] and bone_action(a)]
-# ponytail: las `libre` no van a poses.json hasta que el visor tenga esa base (X03-02); el índice sí las lista
-EXERCISES = tuple(only or [n for n in ALL if bpy.data.actions[n].get('ff_base') != 'libre'])
+EXERCISES = tuple(only or ALL)
 print('ejercicios:', EXERCISES)
 
 SAMPLE = 5   # además, un frame cada SAMPLE: Blender interpola los controles con curvas (arranque y frenada suaves) y el visor, en
@@ -142,11 +141,21 @@ for ex in EXERCISES:
         f, z, *x = act['ff_pulley']; out['exercises'][ex]['meta']['pulley'] = [x[0] if x else 0.0, z, f]
     if act.get('ff_hand'):     # una sola mano tira (remo a un brazo): la otra va tal cual con el tronco
         out['exercises'][ex]['meta']['hand'] = act['ff_hand']
+    if act.get('ff_mano'):     # mano de la biblioteca de la acción (X03-28): el jalón usa sus dedos en vez del puño genérico
+        out['exercises'][ex]['meta']['mano'] = act['ff_mano']
     if act.get('ff_impl'):     # implemento propio de la acción (la barra del jalón): el visor no dibuja maneral
         out['exercises'][ex]['meta']['impl'] = act['ff_impl']
+    if act.get('ff_base') in ('libre', 'floor', 'split', 'bench'):   # (X03-07: las bases que salen de libre también) apoyos y carga declarados (spec X03 §18): el visor calcula la demanda con ellos
+        for k, m in (('apoyos', 'ff_apoyos'), ('carga', 'ff_carga'), ('cargaPc', 'ff_carga_pc')):
+            if act.get(m) is not None: out['exercises'][ex]['meta'][k] = act[m]
     for key, f in [*FRAMES.items(), *(('mid', m) for m in mids(ex))]:
         sc.frame_set(f); sc.frame_set(f)
         P = pb['PROPERTIES']
+        if key == 'start' and act.get('ff_base') in ('libre', 'floor', 'split', 'bench') and pb['BANCO'].scale.x > 0.01:   # banco/cajón/asiento: caja fija [centro, tamaño] en glTF (spec X03 §5, `ff_props`)
+            Mb = bpy.data.objects['FF_banco'].matrix_world   # la caja mide 1 m con el centro de su cara de arriba en el origen y cuelga hacia abajo (z de -1 a 0)
+            cs = [gpos(Mb @ Vector((x, y, z))) for x in (-.5, .5) for y in (-.5, .5) for z in (-1, 0)]
+            lo, hi = [min(c[i] for c in cs) for i in range(3)], [max(c[i] for c in cs) for i in range(3)]
+            out['exercises'][ex]['meta']['props'] = [[[round((a + b) / 2, 4) for a, b in zip(lo, hi)], [round(b - a, 4) for a, b in zip(lo, hi)]]]   # ejes alineados: el banco solo gira 90° en vertical
         fr = {'bones': {}}
         for n in DEF:
             M = pb[n].matrix

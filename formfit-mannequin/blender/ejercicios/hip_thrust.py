@@ -1,4 +1,4 @@
-"""Hip thrust con barra (spec X03-05): acción `hip_thrust`, tipo de base `libre` hasta que exista `bench` (X03-07).
+"""Hip thrust con barra (spec X03-05): acción `hip_thrust`, tipo de base `bench` (X03-07; antes `libre`).
 Las escápulas apoyadas en el borde del banco (FF_banco, de lado a lado), pies en el suelo y la barra sobre la cadera. Frame 1:
 abajo, la cadera cerca del suelo; frame 30: arriba, tronco y muslos en línea horizontal y las tibias verticales.
 El giro es alrededor de los hombros, que no se mueven; los tobillos tampoco.
@@ -10,7 +10,7 @@ Es una base: cabeza (mirando al frente arriba), escápulas en el borde, pies y m
 import math
 from mathutils import Vector, Matrix
 
-META = ('hip_thrust', 'libre', 'Hip thrust')
+META = ('hip_thrust', 'bench', 'Hip thrust')
 DEG = math.pi / 180
 PARAMS = {
     'BENCH_Z':    (0.42, 0.35, 0.50, 'Banco, altura (m)'),
@@ -55,7 +55,8 @@ def frames(F, p):
 
 
 def setup(F, act, p):
-    act['ff_status'] = 'borrador'; act['ff_mano'] = 'barra_pm'; act['ff_plan'] = 'bench'
+    act['ff_status'] = 'borrador'; act['ff_mano'] = 'barra_pm'
+    act['ff_apoyos'] = 'hombros;pie.L+pie.R'; act['ff_carga'] = 'cadera'; act['ff_carga_pc'] = 120   # X03-14: dónde se apoya y dónde va la carga (demanda en `libre`)
 
 
 if __name__ == '__main__':

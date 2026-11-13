@@ -36,8 +36,10 @@ B="C:/Program Files/Blender Foundation/Blender 5.0/blender.exe"
 "$B" -b --factory-startup --python blender/ejercicios/deadlift.py -- blender/FormFit_Maniqui.blend blender/FormFit_Maniqui.blend
 
 npm run build:viewer                    # prototype/viewer.html (abrir en el navegador)
-npm test                                # build + fidelidad + equilibrio
+npm test                                # build + fidelidad + equilibrio + demanda + puerta de robustez
+npm run robust [ejercicio]              # barrido de robustez (X03-24): tabla de fallos por ejercicio
 npm run shots                           # capturas en tests/shots/ para revisar visualmente
+npm run editor                          # editor de afinado (X03-27): http://localhost:8770/?editor, guarda en ajustes/ y reconstruye el visor
 ```
 
 ## Reglas que no se pueden romper

@@ -41,6 +41,12 @@ for (const [id, e] of Object.entries(POSES.exercises)) EXERCISES[id] ??= { name:
 // proporción (`cm` con la inclinación máxima, `trunk`) y el recorrido se corta cuando el codo llega a `elbow` (con frenada).
 // Con mancuernas y kettlebells, recorrido completo.
 const ROW_BAR = { trunk: 25, cm: 8, elbow: 120 };   // elbow en grados
+// carga de la acción `libre` y de las bases que salen de ella (X03-14): su valor por defecto es el de la acción (`ff_carga_pc`) y solo sale si la acción lleva carga;
+// no mueve la pose (dibuja los discos o las mancuernas y pesa en la demanda)
+const LOAD_LIBRE = { id: 'load', label: 'Carga', hide: ex => !(POSES.exercises[ex]?.meta?.carga && POSES.exercises[ex].meta.carga !== 'ninguna'), min: 0, max: 250, step: 5,
+  defOf: ex => POSES.exercises[ex]?.meta?.cargaPc ?? 0, def: 0, fmt: v => `${v}% del peso corporal` };
+const CARGA = (ex, t) => POSES.exercises[ex]?.meta?.carga === t;
+const benchTop = ex => { const b = POSES.exercises[ex]?.meta?.props?.[0]; return b ? (b[0][1] + b[1][1] / 2) * 100 : 0; };   // cm del suelo a la tapa del banco
 const PARAMS = {
   stand: [
     { id: 'depth', label: 'Profundidad', min: 0.6, max: 1.25, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}% de la autorada` },
@@ -94,23 +100,30 @@ const PARAMS = {
     { id: 'gripType', label: 'Agarre', hide: ex => !JALON(ex), def: 'prono', options: [['prono', 'Prono'], ['supino', 'Supino'], ['neutro', 'Neutro']] },   // jalón: elige la acción de su agarre (variantFor)
     { id: 'pulleyH', label: 'Altura de la polea', hide: JALON, min: -30, max: 80, step: 1, def: 0, fmt: v => `${Math.round((POSES.exercises[state.exId]?.meta?.pulley ? pulleyAt(state.exId, v).y : 0) * 100)} cm del suelo${v === 0 ? ' (en línea con el brazo)' : ''}` },
     // jalón (X03-22): la polea va por delante (la autorada, a unos 25 cm del eje de la persona); los brazos giran hacia ella como con «Altura de la polea»
-    { id: 'pulleyF', label: 'Distancia de la polea', hide: ex => !JALON(ex), min: -15, max: 15, step: 1, def: 0, fmt: v => { const B = POSES.exercises[state.exId]?.start.bones, z = B ? (B['DEF-THIGH01.L'].p[2] + B['DEF-THIGH01.R'].p[2]) / 2 : 0;
+    { id: 'pulleyF', label: 'Distancia de la polea', hide: ex => !JALON(ex), min: -12, max: 8, step: 1, def: 0, fmt: v => { const B = POSES.exercises[state.exId]?.start.bones, z = B ? (B['DEF-THIGH01.L'].p[2] + B['DEF-THIGH01.R'].p[2]) / 2 : 0;
       return `${Math.round((pulleyAt(state.exId, 0, v).z - z) * 100)} cm delante de la cadera${v === 0 ? ' (la autorada)' : ''}`; } },
-    { id: 'trunk', label: 'Inclinación del tronco', min: -15, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)}° más ${v > 0 ? 'adelante' : 'atrás'}` },
+    // inicio y final (X03-26): la inclinación ABSOLUTA del pecho (+ = hacia delante) al empezar y al acabar la repetición; su valor por defecto es el de la acción (se mide en
+    // sus claves: `tiltKeys`). Los dos iguales = tronco quieto (sustituyen a «Inclinación» y «Balanceo»)
+    { id: 'trunk0', label: 'Tronco al inicio', min: -25, max: 45, lim: ex => JALON(ex) ? [-16, 22] : [-25, 45], step: 1, defOf: ex => tiltKeys(ex)[0] / DEG, def: 0, fmt: v => trunkFmt(v, 0) },
+    { id: 'trunk1', label: 'Tronco al final', min: -25, max: 45, lim: ex => JALON(ex) ? [-25, 14] : [-25, 45], step: 1, defOf: ex => tiltKeys(ex)[1] / DEG, def: 0, fmt: v => trunkFmt(v, 1) },
     // curvatura (X03-20): giro del pecho y la columna alta alrededor del eje lateral, tras la inclinación y antes de llevar las manos al maneral
-    { id: 'curv', label: 'Curvatura del tronco', min: -15, max: 20, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : v > 0 ? `${v}° más encorvado` : `${-v}° más erguido, sacando pecho` },
-    // juego escapular (X03-23): cuánto protraen/retraen (en el jalón, suben/bajan) las escápulas con la repetición, y dónde se quedan
-    { id: 'scapPlay', label: 'Juego escapular', min: 0, max: 150, step: 5, def: 100, fmt: v => v === 100 ? 'el autorado' : v === 0 ? (JALON(state.exId) ? 'sin juego: siempre abajo' : 'sin juego') : `${v}% del autorado` },
-    { id: 'scapPos', label: 'Escápulas', hide: JALON, min: -100, max: 100, step: 5, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)}% más ${v > 0 ? 'retraídas' : 'protraídas'}` },
-    { id: 'swing', label: 'Balanceo del tronco', min: 0, max: 200, step: 5, def: 100, fmt: v => v === 100 ? 'el autorado' : v === 0 ? 'quieto (a medio camino)' : `${v}% del autorado` },
+    { id: 'curv', label: 'Curvatura del tronco', min: -15, max: 20, lim: ex => JALON(ex) ? [-15, 14] : [-15, 20], step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : v > 0 ? `${v}° más encorvado` : `${-v}° más erguido, sacando pecho` },
+    // escápulas al inicio y al final (X03-26): 0 = como en la clave de final de la acción, 100 = como en la de inicio (jalón: 0 abajo, 100 arriba; remos: 0 retraídas, 100 protraídas)
+    { id: 'scap0', label: 'Escápulas al inicio', min: 0, max: 120, step: 5, def: 100, fmt: v => scapFmt(v, 100) },
+    { id: 'scap1', label: 'Escápulas al final', min: 0, max: 120, step: 5, def: 0, fmt: v => scapFmt(v, 0) },
     { id: 'dest', label: 'Hacia dónde tira', min: -20, max: 8, step: 1, def: 0, fmt: v => JALON(state.exId) ? (v === 0 ? 'la autorada' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'la clavícula' : 'el esternón'}`)
       : v === 0 ? 'la autorada (ombligo)' : `${Math.abs(v)} cm más hacia ${v < 0 ? 'el pecho' : 'la cadera'}` },
     { id: 'knees', label: 'Flexión de rodilla', hide: JALON, min: -20, max: 50, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${v > 0 ? '+' : ''}${v}° (la pelvis se desliza por el asiento)` },
     { id: 'grip', label: 'Anchura de agarre (barra recta)', hide: ex => !!POSES.exercises[ex]?.meta?.hand || JALON(ex), min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
-    { id: 'grip', label: 'Anchura de agarre', hide: ex => !JALON(ex), min: 0.7, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },   // jalón: las manos se deslizan por la barra
+    { id: 'grip', label: 'Anchura de agarre', hide: ex => !JALON(ex), min: 0.7, max: 1.4, step: 0.01, def: 1,
+      // el límite es en distancia real, no en % de la acción (el 70 % del prono, que es ancho, seguía siendo muy separado): de 16 cm a 110 cm entre manos
+      lim: ex => { const a = gripHalf(ex); return [Math.ceil(GRIP_HALF_MIN / a * 100) / 100, Math.floor(GRIP_HALF_MAX / a * 100) / 100]; },
+      fmt: v => `${Math.round(v * 100)}% · ${Math.round(2 * v * gripHalf(state.exId) * 100)} cm entre manos` },   // jalón: las manos se deslizan por la barra
     { id: 'stance', label: 'Anchura de pies', min: 0.75, max: 1.6, step: 0.01, def: 1, fmt: v => `${Math.round(v * 100)}%` },
     { id: 'wrist', label: 'Mano', hide: JALON, def: 'polea', options: [['polea', 'Hacia la polea'], ['autorada', 'La de Blender']] },
-    { id: 'elbows', label: 'Codos', min: -30, max: 45, step: 1, def: 0, fmt: v => v === 0 ? (JALON(state.exId) ? 'los autorados' : 'los del maneral') : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` },
+    { id: 'elbows', label: 'Codos', hide: JALON, min: -30, max: 45, step: 1, def: 0, fmt: v => v === 0 ? 'los del maneral' : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` },
+    // jalón (X03-27): los codos al inicio y al final, que se suman al afinado `codos(s)` con un lerp suave
+    ...[['elbows0', 'Codos al inicio'], ['elbows1', 'Codos al final']].map(([id, label]) => ({ id, label, hide: ex => !JALON(ex), min: -30, max: 45, step: 1, def: 0, fmt: v => v === 0 ? 'los autorados' : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` })),
     { id: 'bottom', label: 'Desde dónde empieza', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'brazos estirados (la autorada)' : `${v}% del recorrido` },
     { id: 'top', label: 'Hasta dónde tira', min: 40, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}% del recorrido` },
     { id: 'load', label: 'Carga', min: 0, max: 150, step: 5, def: 60, fmt: v => `${v}% del peso corporal` },
@@ -122,6 +135,35 @@ const PARAMS = {
     { id: 'top', label: 'Hasta dónde sube', min: 15, max: 100, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada (barbilla sobre la barra)' : `${v}% del recorrido` },
     { id: 'bottom', label: 'Desde dónde baja', min: 0, max: 60, step: 1, def: 0, fmt: v => v === 0 ? 'colgado del todo' : `${v}% del recorrido (codos algo flexionados)` },
   ],
+  // libre (X03-02): la animación de Blender tal cual, solo escalada por la altura del cliente. El único ajuste es la carga (X03-14): su valor por defecto
+  // es el de la acción (`ff_carga_pc`) y solo sale si la acción lleva carga; no mueve la pose (dibuja los discos y pesa en la demanda)
+  libre: [LOAD_LIBRE],
+  // bases sobre `libre` (X03-07): la animación de Blender y, encima, los ajustes como diferencias; con todos en su valor por defecto sale la pose de Blender.
+  // Sin `bottom` / `top` (recorrido): por ahora no (spec X03 §10.1).
+  floor: [   // flexiones: manos y pies fijos en el suelo, el cuerpo gira sobre las puntas
+    { id: 'hands', label: 'Anchura de manos', min: 70, max: 170, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}%` },
+    { id: 'handPos', label: 'Altura de las manos', min: -20, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)} cm hacia ${v < 0 ? 'la cabeza' : 'la cadera'}` },
+    { id: 'handRot', label: 'Rotación de las manos', min: -45, max: 45, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada (dedos hacia delante)' : `${Math.abs(v)}° dedos hacia ${v > 0 ? 'fuera' : 'dentro'}` },
+    { id: 'push', label: 'Dirección de empuje', min: -5, max: 6, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `abajo, hombros ${Math.abs(v)} cm más ${v > 0 ? 'adelante' : 'atrás'}` },   // ponytail: el tobillo de este maniquí está a ~10 cm de la punta, así que abajo el pie solo da ~6 cm de avance; la spec pedía +15
+    { id: 'load', label: 'Lastre', min: 0, max: 100, step: 5, def: 0, fmt: v => `${v}% del peso corporal` },
+  ],
+  split: [   // búlgara: pie de delante en el suelo, el de atrás en el banco
+    { id: 'stride', label: 'Largo de la zancada', min: -15, max: 20, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)} cm más ${v > 0 ? 'larga' : 'corta'}` },
+    { id: 'benchH', label: 'Altura del banco', min: -20, max: 15, step: 1, def: 0, fmt: v => `${Math.round(benchTop(state.exId) + v)} cm del suelo${v === 0 ? ' (la autorada)' : ''}` },
+    { id: 'trunk', label: 'Inclinación del tronco', min: -10, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)}° más ${v > 0 ? 'adelante' : 'atrás'}` },
+    { id: 'stance', label: 'Anchura de pies', min: 60, max: 200, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}%` },
+    LOAD_LIBRE,
+  ],
+  bench: [   // press de banca (carga en las manos) y hip thrust (carga en la cadera): cada ajuste sale según `meta.carga`
+    { id: 'grip', label: 'Anchura de agarre', hide: ex => !CARGA(ex, 'manos'), min: 70, max: 160, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}%` },
+    { id: 'touch', label: 'Dónde toca la barra', hide: ex => !CARGA(ex, 'manos'), min: -6, max: 8, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)} cm hacia ${v < 0 ? 'la clavícula' : 'el abdomen'}` },
+    { id: 'elbows', label: 'Codos', hide: ex => !CARGA(ex, 'manos'), min: -30, max: 30, step: 1, def: 0, fmt: v => v === 0 ? 'los autorados' : `${Math.abs(v)}° más ${v > 0 ? 'abiertos' : 'pegados'}` },
+    { id: 'stance', label: 'Anchura de pies', hide: ex => !CARGA(ex, 'manos'), min: 60, max: 160, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}%` },
+    { id: 'feet', label: 'Distancia de los pies', hide: ex => !CARGA(ex, 'cadera'), min: -15, max: 25, step: 1, def: 0, fmt: v => v === 0 ? 'la autorada' : `${Math.abs(v)} cm más ${v > 0 ? 'lejos' : 'cerca'} del banco` },
+    { id: 'stance', label: 'Anchura de pies', hide: ex => !CARGA(ex, 'cadera'), min: 60, max: 200, step: 1, def: 100, fmt: v => v === 100 ? 'la autorada' : `${v}%` },
+    { id: 'benchH', label: 'Altura del banco', hide: ex => !CARGA(ex, 'cadera'), min: -10, max: 10, step: 1, def: 0, fmt: v => `${Math.round(benchTop(state.exId) + v)} cm del suelo${v === 0 ? ' (la autorada)' : ''}` },
+    LOAD_LIBRE,
+  ],
 };
 const PRESETS = {
   avg: { femur: 100, tibia: 100, torso: 100, dorsi: 35 },
@@ -129,16 +171,22 @@ const PRESETS = {
   torso: { femur: 94, tibia: 100, torso: 110, dorsi: 35 },
   ankle: { femur: 100, tibia: 100, torso: 100, dorsi: 20 },
 };
+const PSET = ex => PARAMS[EXERCISES[ex].base];   // los ajustes de un ejercicio: los de su base
+// rango de un ajuste: el suyo o, si lo recorta el ejercicio (`lim`: p. ej. el jalón no admite tanta inclinación sin perder la alineación), el de `lim`
+// rango, valor por defecto y «oculto» de un ajuste: los del código (o, si lo recorta el ejercicio, `lim`) y, encima, los que el usuario fija en el afinado (X03-27, `rangos`), sin pasar de `lim`
+function rangoOf(ex, p) {
+  const lim = p.lim?.(ex) ?? [p.min, p.max], def = p.defOf ? p.defOf(ex) : p.def, rg = !p.options && AJ[actOf(ex)]?.rangos?.[p.id];   // el valor por defecto de `libre` lo dice la acción
+  if (!rg) return { min: lim[0], max: lim[1], def, oculto: false };
+  const min = rg.min ?? lim[0], max = Math.max(rg.max ?? lim[1], min);   // lo que escribe el usuario manda, también fuera de `lim` (el rango probado)
+  return { min, max, def: clamp(rg.def ?? def, min, max), oculto: !!rg.oculto };
+}
+const prange = (ex, p) => { const r = rangoOf(ex, p); return [r.min, r.max]; };
+const pdef = (ex, p) => rangoOf(ex, p).def;
+const phide = (ex, p) => !!p.hide?.(ex) || rangoOf(ex, p).oculto;
 const state = { exId: 'back_squat', per: {}, body: { height: 180, ...PRESETS.avg }, s: 1, playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, heat: true, ref: false, allJoints: false, joint: null,
   lyRes: true, lySup: true, lyArm: true, lyBal: false, lyPath: false, lyNum: false };   // capas de fuerza (X03-17) y cifras (X03-18)
-for (const [id, ex] of Object.entries(EXERCISES)) state.per[id] = Object.fromEntries(PARAMS[ex.base].map(p => [p.id, p.def]));
-// variantes (acción con `ff_variant_of`, p. ej. Chinup = dominada supina): no son un ejercicio aparte; comparten los ajustes del
-// suyo y se usan desde su chip de agarre (variantFor)
-const VARIANT = id => POSES.exercises[id]?.meta?.of;
-for (const id of Object.keys(EXERCISES)) if (VARIANT(id) && state.per[VARIANT(id)]) state.per[id] = state.per[VARIANT(id)];
-const variantFor = (ex, grip) => Object.keys(POSES.exercises).find(id => VARIANT(id) === ex && POSES.exercises[id].meta.grip === grip);
 const EX = () => EXERCISES[state.exId], PRM = () => state.per[state.exId];
-const isDefault = () => PARAMS[EX().base].every(p => PRM()[p.id] === p.def) && state.body.height === 180 && ['femur', 'tibia', 'torso'].every(k => state.body[k] === 100) && state.body.dorsi === 35;
+const isDefault = () => PSET(state.exId).every(p => PRM()[p.id] === pdef(state.exId, p)) && state.body.height === 180 && ['femur', 'tibia', 'torso'].every(k => state.body[k] === 100) && state.body.dorsi === 35;
 
 /* ---------------- Rig ---------------- */
 const RIG = { ready: false };
@@ -316,12 +364,13 @@ function twoBone(A, C, a, b, pole) {
 }
 function poleOf(A, M, C) { const u = C.clone().sub(A).normalize(); const o = M.clone().sub(A); return o.sub(u.multiplyScalar(o.dot(u))).normalize(); }
 // Recoloca una extremidad de 2 segmentos (cada uno con 2 huesos: X01/X02) conservando el reparto de giro autorado.
-function solveLimb(pose, auth, names, target, poleDir, lens) {
+function solveLimb(pose, auth, names, target, poleDir, lens, hingeRef) {   // hingeRef: bisagra autorada de referencia cuando la de la pose no es de fiar (brazo casi recto)
   const [u1, u2, l1, l2, end] = names;
   const A = pose[u1].p.clone();
   const aMid = auth[l1].p, aEnd = auth[end].p, aA = auth[u1].p;
   const aUp = aMid.clone().sub(aA), aLo = aEnd.clone().sub(aMid);
   let aHinge = aUp.clone().cross(aLo); if (aHinge.lengthSq() < 1e-8) aHinge = poleOf(aA, aMid, aEnd).cross(aEnd.clone().sub(aA));
+  if (hingeRef) aHinge = hingeRef;
   const ik = twoBone(A, target, lens[0], lens[1], poleDir);
   const nUp = ik.mid.clone().sub(A), nLo = ik.end.clone().sub(ik.mid);
   let nHinge = nUp.clone().cross(nLo); if (nHinge.lengthSq() < 1e-8) nHinge = poleDir.clone().cross(nUp);
@@ -511,6 +560,88 @@ const SCAPR = {};
 const scapR = ex => SCAPR[ex] ??= withBody(DEFAULT_BODY, () => { const a = authoredPose(ex, 0), b = authoredPose(ex, 1); return Object.fromEntries(['L', 'R'].map(S => [S, [scapRel(a, S), scapRel(b, S)]])); });
 // q^t: escala el ángulo sobre su eje (slerp con t > 1 no siempre extrapola)
 const qPow = (q, t) => { const w = clamp(q.w, -1, 1), sn = Math.sqrt(1 - w * w); return sn < 1e-9 ? new THREE.Quaternion() : new THREE.Quaternion().setFromAxisAngle(V(q.x, q.y, q.z).multiplyScalar(Math.sign(w || 1) / sn), 2 * Math.acos(Math.abs(w)) * t); };
+// ---- inicio y final de la base `cable` (X03-26): inclinación del pecho (+ = hacia delante) en las claves de una acción, y lo que lleva recorrido el pecho autorado entre las dos
+const chestTilt = P => { const y = Y.clone().applyQuaternion(P['DEF-CHEST'].q); return Math.atan2(y.z, y.y); };
+const TILT = {}, TILT_MIN = 1 * DEG;   // si la acción no mueve el tronco (menos de 1°), w = s suavizado
+const tiltOf = ex => TILT[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => chestTilt(authoredPose(ex, s))));
+const tiltKeys = ex => tiltOf(VARIANT(ex) || ex);   // los valores por defecto de «Tronco al inicio / al final» son los de la acción base (las variantes comparten ajustes)
+const trunkFmt = (v, i) => `${Math.round(Math.abs(v)) < 1 ? 'vertical' : `${Math.round(Math.abs(v))}° hacia ${v > 0 ? 'delante' : 'atrás'}`}${Math.abs(v - tiltKeys(state.exId)[i] / DEG) < 0.5 ? ' (la autorada)' : ''}`;
+const scapFmt = (v, d) => { const J = JALON(state.exId), lo = J ? 'abajo' : 'retraídas', hi = J ? 'arriba' : 'protraídas'; return `${v === 0 ? lo : v === 100 ? hi : `${v}% hacia ${hi}`}${v === d ? ' (la autorada)' : ''}`; };
+// el tronco en este frame con «Tronco al inicio / al final»: el pecho debe ir de `trunk0` a `trunk1` con el mismo ritmo (w) que el autorado, y cada hueso del tronco hace lo mismo que su
+// recta de la acción (de su giro en la clave de inicio al de la de final, con el progreso w del pecho) más lo que la acción se sale de esa recta (la cabeza que cabecea, p. ej.). Devuelve el
+// giro de mundo de cada hueso que no es pierna ni brazo, y el de los brazos con el pecho. Por defecto, nada. Si la acción no mueve el tronco (< 1°), un giro rígido `rigid` (rad)
+const KEYQ = {}, legsOf = new Set([...subtree('DEF-THIGH01.L'), ...subtree('DEF-THIGH01.R')]), armsOf = new Set([...subtree('DEF-SHOULDER.L'), ...subtree('DEF-SHOULDER.R')]);
+const keyQ = ex => KEYQ[ex] ??= withBody(DEFAULT_BODY, () => [0, 1].map(s => { const A = authoredPose(ex, s); return Object.fromEntries(BN.map(n => [n, A[n].q.clone()])); }));
+function trunkQ(ex, prm, A, s) {
+  const [t0, t1] = tiltOf(ex), [d0, d1] = tiltKeys(ex), mv = Math.abs(t1 - t0) >= TILT_MIN, w = mv ? (chestTilt(A) - t0) / (t1 - t0) : s * s * (3 - 2 * s);
+  const dT = (prm.trunk0 * DEG - d0) * (1 - w) + (prm.trunk1 * DEG - d1) * w + (fineAt(ex, prm, s).tronco || 0) * DEG;   // lo que el pecho se aparta del autorado (+ el afinado «Tronco · Inclinación», X03-28)
+  if (Math.abs(dT) < 1e-9) return {};
+  if (!mv) return { rigid: dT };
+  const [K0, K1] = keyQ(ex), w2 = w + dT / (t1 - t0), q = {}, line = (n, t) => slerpX(K0[n], K1[n], t);
+  for (const n of BN) if (!legsOf.has(n) && !armsOf.has(n)) q[n] = A[n].q.clone().multiply(line(n, w).invert()).multiply(line(n, w2));
+  const dC = q['DEF-CHEST'].clone().multiply(A['DEF-CHEST'].q.clone().invert());
+  for (const n of armsOf) q[n] = dC.clone().multiply(A[n].q);
+  return { q };
+}
+// escápula de este frame con «Escápulas al inicio / al final»: u = lo que le queda por recorrer (1 al inicio, 0 al final); lo que la acción se sale de la recta se conserva
+const slerpX = (a, b, t) => a.clone().multiply(qPow(a.clone().invert().multiply(b), t));   // como slerp, pero extrapola con t > 1
+const qAng = (a, b) => 2 * Math.acos(clamp(Math.abs(a.dot(b)), 0, 1));
+function scapAt(ex, prm, A, S, s) {
+  const fe = (fineAt(ex, prm, s).escap || 0) / 100;   // afinado «Escápulas · Subir / bajar» (X03-28): se suma al progreso u'
+  const [[q0, v0], [q1, v1]] = scapR(ex)[S], [r, v] = scapRel(A, S), d01 = qAng(q0, q1), dv = v0.distanceTo(v1);
+  const sm = 1 - s * s * (3 - 2 * s), uq = d01 > 0.01 ? qAng(r, q1) / d01 : sm, uv = dv > 0.002 ? v.clone().sub(v1).dot(v0.clone().sub(v1)) / (dv * dv) : sm;   // lo que le queda por recorrer, por el giro y por la posición
+  const to = u => prm.scap1 / 100 + (prm.scap0 - prm.scap1) / 100 * u + fe, lv = t => v1.clone().lerp(v0, t);
+  return [r.clone().multiply(slerpX(q1, q0, uq).invert()).multiply(slerpX(q1, q0, to(uq))), v.sub(lv(uv)).add(lv(to(uv)))];
+}
+// ---- jalón sobre Blender, con reglas de mano, muñeca y codo (X03-26)
+// R1 la barra en el hueco de la mano · R2 la mano gira alrededor de la barra con el antebrazo · R3 el codo va donde alinea el antebrazo con el cable (visto de lado) · R4 el recorrido acaba donde se pierde la alineación
+const ALIGN_TOL = 15 * DEG, JAL_IT = 8, JAL_RELAX = 0.6, JAL_EPS = 0.1;   // vueltas de R2 y cuánto se avanza hacia el punto fijo en cada una
+const wrapA = x => Math.atan2(Math.sin(x), Math.cos(x));
+const psiOf = (d, a) => { const e1 = Y.clone().addScaledVector(a, -a.y).normalize(); return Math.atan2(d.dot(a.clone().cross(e1)), d.dot(e1)); };   // ángulo de d alrededor de a (proyectado en el plano perpendicular a a)
+const sagAng = (a, b) => Math.abs(wrapA(Math.atan2(a.z, a.y) - Math.atan2(b.z, b.y)));   // ángulo entre a y b visto de lado (plano YZ)
+const swivel = (ax, v) => { const ref = X.clone().addScaledVector(ax, -ax.x).normalize(), p = v.clone().addScaledVector(ax, -v.dot(ax)); return Math.atan2(ax.dot(ref.clone().cross(p)), ref.dot(p)); };   // giro de v alrededor de ax, medido desde X
+const elbowAng = (Sh, W, c, Lf) => {   // R3: giro, alrededor de hombro→muñeca, del codo «de regla» (E* = W − Lf·c: antebrazo en la línea del cable) y cuánto se aparta de la línea
+  const u = W.clone().sub(Sh).normalize(), v = W.clone().addScaledVector(c, -Lf).sub(Sh);
+  return { phi: swivel(u, v), r: v.addScaledVector(u, -v.dot(u)).length() };
+};
+const JAL = {};
+// el codo «estable al empezar» (X03-27): mientras el brazo está casi recto (el codo se separa de la línea hombro→muñeca menos de ELBOW_DEF antebrazos) su giro no está definido y pivotaría;
+// se usa el del primer instante de la acción en que ya lo está (`sc`, por bisección sobre la pose autorada) y su giro `th` (swivel), una vez por acción y lado
+const ELBOW_DEF = 0.25, STAB_FADE = 0.15, smooth01 = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const elbowSep = (A, S) => { const Sh = A[`DEF-ARM01.${S}`].p, E = A[`DEF-FORARM01.${S}`].p, W = A[`DEF-HAND.${S}`].p, u = W.clone().sub(Sh).normalize(), v = E.clone().sub(Sh); return v.addScaledVector(u, -v.dot(u)).length() / E.distanceTo(W); };
+const stablePole = (ax, th) => X.clone().addScaledVector(ax, -ax.x).normalize().applyAxisAngle(ax, th);   // el polo con ese giro (inverso de `swivel`)
+function elbowStable(ex, S) {
+  const f = s => elbowSep(authoredPose(ex, s), S); let i = 0;
+  while (i <= 60 && f(i / 60) < ELBOW_DEF) i++;
+  if (i === 0 || i > 60) return null;   // ya definido al empezar, o nunca
+  let lo = (i - 1) / 60, hi = i / 60; for (let k = 0; k < 24; k++) { const m = (lo + hi) / 2; if (f(m) < ELBOW_DEF) lo = m; else hi = m; }
+  const A = authoredPose(ex, hi), Sh = A[`DEF-ARM01.${S}`].p, E = A[`DEF-FORARM01.${S}`].p, W = A[`DEF-HAND.${S}`].p;
+  return { sc: hi, th: swivel(W.clone().sub(Sh).normalize(), poleOf(Sh, E, W)) };
+}
+const jalonData = ex => JAL[ex] ??= withBody(DEFAULT_BODY, () => {   // por mano: el hueco (en los ejes de la mano) de la clave de final, donde la barra está bien envuelta; dónde agarra a lo largo de la barra (clave de inicio); el eje del puño; el alcance al inicio
+  const E = POSES.exercises[ex], A0 = authoredPose(ex, 0), A1 = authoredPose(ex, 1), b0 = V(...E.start.bar.center), b1 = V(...E.end.bar.center), side = {};
+  for (const S of ['L', 'R']) { const hn = `DEF-HAND.${S}`;
+    const hollow = b1.clone().add(V(gripOf(A1, S).x - b1.x, 0, 0)).sub(A1[hn].p).applyQuaternion(A1[hn].q.clone().invert()), axis = V(...POSES.hands['28'][S].hollow.axis).normalize();
+    // palm: hacia dónde está la barra respecto al hueso (en los ejes de la mano), perpendicular a la mano (Y) y al eje de agarre; es la normal de la palma (X03-28)
+    const palm = axis.clone().cross(Y).normalize(); if (palm.dot(hollow) < 0) palm.negate();
+    side[S] = { hollow, along: gripOf(A0, S).x - b0.x, axis, palm, R0: A0[hn].p.distanceTo(A0[`DEF-ARM01.${S}`].p), stab: elbowStable(ex, S) }; }
+  return { side };
+});
+// el hueco de la mano con el afinado «Barra en la mano» (X03-28): `dedos` (+ hacia los dedos) y `palma` (+ más dentro de la palma), en metros, medidos en el mundo
+const hollowFine = (jd, dedos = 0, palma = 0, k = K()) => jd.hollow.clone().addScaledVector(Y, dedos / k).addScaledVector(jd.palm, -palma / k);
+const hollowAt = (ex, P, S, dedos = 0, palma = 0) => P[`DEF-HAND.${S}`].p.clone().add(hollowFine(jalonData(ex).side[S], dedos, palma).multiplyScalar(K()).applyQuaternion(P[`DEF-HAND.${S}`].q));   // el punto de la barra que la mano tiene en el hueco
+// medidas del resultado frente a la acción en el mismo s: exceso de ángulo antebrazo–cable (R4) y cuánto se aparta la muñeca (hand–antebrazo alrededor del eje del puño)
+function jalonAlign(ex, P, bar, A, barA, pulley, pulleyA, mun) {   // mun: la flexión de muñeca afinada (rad); la muñeca se mide contra «alineada + afinado»
+  const jd = jalonData(ex), out = { excess: -Infinity, wrist: 0 };
+  for (const [S, sgn] of [['L', 1], ['R', -1]]) { const f = (Q, b, pu) => { const e = Q[`DEF-FORARM01.${S}`].p, w = Q[`DEF-HAND.${S}`].p, f = w.clone().sub(e), a = jd.side[S].axis.clone().applyQuaternion(Q[`DEF-HAND.${S}`].q);
+      return { d: sagAng(f, pu.clone().sub(b)), rel: wrapA(psiOf(Y.clone().applyQuaternion(Q[`DEF-HAND.${S}`].q), a) - psiOf(f, a)) }; };
+    const a = f(P, bar, pulley), b = f(A, barA, pulleyA); out.excess = Math.max(out.excess, a.d - b.d); out.wrist = Math.max(out.wrist, Math.abs(wrapA(a.rel + sgn * mun))); }   // la flexión en espejo: el signo del lado
+  return out;
+}
+// la mano de la biblioteca de la acción (`meta.mano`, X03-28): los giros de sus dedos respecto a la mano, por lado; null si la acción no la tiene o no está posada en la biblioteca (colgado_neutro)
+const LIBH = {};
+const libraryHand = ex => LIBH[ex] ??= (() => { const h = POSES.hands?.[POSES.exercises[ex]?.meta?.mano]; if (!h) return null;
+  return Object.fromEntries(['L', 'R'].map(S => [S, Object.fromEntries(Object.entries(h[S].fingers).map(([n, q]) => [n, new THREE.Quaternion(...q)]))])); })();
 const ROW_SUP_ELBOW = 30 * DEG;   // remo supino sin su acción: los codos más pegados al cuerpo
 // remo con barra: hasta dónde llega la animación (s) para que el codo no pase de ROW_BAR.elbow (ni del autorado al final, si es
 // mayor: por defecto, la pose de Blender). Bisección sobre evaluateRaw, una vez por cuerpo y ajustes; el codo crece con s.
@@ -579,6 +710,7 @@ const SUPPORTS = (() => {
   const pies = P => [['L', 'R'].map(S => ({ p: footPt(P, S), part: 'foot.' + S, emax: 0.10 * K() }))];
   const manos = P => ['L', 'R'].map(S => ({ p: gripOf(P, S), part: 'hand.' + S, emax: 0 }));
   const enManos = (P, L) => ['L', 'R'].map(S => ({ p: gripOf(P, S), f: V(0, -L / 2, 0), part: 'hand.' + S, tipo: 'carga' }));
+  const libre = (P, ex, out, L) => { const m = POSES.exercises[ex].meta; return m.apoyos ? parseSupports(m.apoyos, m.carga)(P, out, L) : null; };
   return {
     stand: (P, ex, out, L) => ({ cargas: [{ p: out.bar.center.clone(), f: V(0, -L, 0), part: 'trunkUp', tipo: 'carga' }], vert: pies(P) }),
     hinge: (P, ex, out, L) => ({ cargas: enManos(P, L), vert: pies(P) }),
@@ -588,20 +720,49 @@ const SUPPORTS = (() => {
       const dir = out.pulley.clone().sub(out.maneral?.hook || out.bar.center).normalize(), one = POSES.exercises[ex].meta?.hand, lados = one ? [one] : ['L', 'R'];
       return { cargas: lados.map(S => ({ p: gripOf(P, S), f: dir.clone().multiplyScalar(L / lados.length), part: 'hand.' + S, tipo: 'carga' })), fijo: ['pelvis', 'foot.L', 'foot.R', ...(JALON(ex) ? ['thigh.L', 'thigh.R'] : [])] };   // jalón: los muslos, bajo el rodillo
     },
+    libre: libre, split: libre, bench: libre,   // sin apoyos declarados: sin demanda
+    // flexiones: además, el lastre (% del peso) como una carga vertical sobre el tronco (sin dibujo)
+    floor: (P, ex, out, L) => { const r = libre(P, ex, out, L); if (r && L) r.cargas.push({ p: midOf(P, 'DEF-THIGH01.L', 'DEF-THIGH01.R').lerp(midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R'), 0.63), f: V(0, -L, 0), part: 'trunkUp', tipo: 'carga' }); return r; },
     seat: (P, ex, out, L) => {
       const dir = out.F.plateTravel.clone().normalize(); if (dir.dot(midOf(P, 'DEF-THIGH01.L', 'DEF-THIGH01.R').sub(out.plate)) < 0) dir.negate();   // de la plataforma a la cadera
       return { cargas: ['L', 'R'].map(S => ({ p: footPt(P, S), f: dir.clone().multiplyScalar(L / 2), part: 'foot.' + S, tipo: 'carga' })), fijo: ['pelvis', 'trunkUp'] };
     },
   };
 })();
+// Apoyos y carga declarados en la acción `libre` (X03-14, `ff_apoyos` y `ff_carga`) -> la misma estructura que SUPPORTS: (P, out, L) => { cargas, vert | fijo, nombres }.
+// Grupos separados por `;` y puntos de un grupo por `+`. Verticales: pie.L, pie.R, mano.L, mano.R, hombros. Fijos: asiento (pelvis), banco (pelvis y tronco), plataforma (pies).
+// Con algún apoyo fijo todos se tratan como fijos (§14.4). Carga: tronco · manos · mano.L · mano.R · cadera · ninguna.
+const FIJOS = { asiento: ['pelvis'], banco: ['pelvis', 'trunkUp'], plataforma: ['foot.L', 'foot.R'] };
+function parseSupports(texto, carga = 'ninguna') {
+  const grupos = texto.split(';').map(g => g.split('+').map(x => x.trim()));
+  return (P, out, L) => {
+    const pt = n => { const [k, S] = n.split('.');
+      return k === 'pie' ? { kind: k, p: footPt(P, S), part: 'foot.' + S, emax: 0.10 * K() } : k === 'mano' ? { kind: k, p: gripOf(P, S), part: 'hand.' + S, emax: 0 }
+        : { kind: 'hombros', p: midOf(P, 'DEF-ARM01.L', 'DEF-ARM01.R'), part: 'trunkUp', emax: 0.10 * K() }; };
+    const bar = out.bar?.center, f = V(0, -L, 0), cargas = carga === 'tronco' ? [{ p: bar.clone(), f, part: 'trunkUp', tipo: 'carga' }] : carga === 'cadera' ? [{ p: bar.clone(), f, part: 'pelvis', tipo: 'carga' }]
+      : carga === 'manos' ? ['L', 'R'].map(S => ({ p: gripOf(P, S), f: V(0, -L / 2, 0), part: 'hand.' + S, tipo: 'carga' }))
+      : carga.startsWith('mano.') ? [{ p: gripOf(P, carga.slice(5)), f, part: 'hand.' + carga.slice(5), tipo: 'carga' }] : [];
+    if (grupos.flat().some(n => FIJOS[n])) return { cargas, fijo: [...new Set(grupos.flat().flatMap(n => FIJOS[n] || [pt(n).part]))] };
+    const vert = grupos.map(g => g.map(pt)), kind = G => G[0].kind;
+    // nombres para el panel: dos pies sueltos = «pie delantero» (el de más z) y «pie trasero»; si no, el tipo en plural
+    const nombres = vert.map(G => ({ pie: 'pies', mano: 'manos', hombros: 'hombros' }[kind(G)]));
+    if (vert.length === 2 && vert.every(G => G.length === 1 && G[0].kind === 'pie')) { const d = vert[0][0].p.z >= vert[1][0].p.z; nombres[0] = d ? 'pie delantero' : 'pie trasero'; nombres[1] = d ? 'pie trasero' : 'pie delantero'; }
+    return { cargas, vert, nombres };
+  };
+}
 // Reparto entre apoyos verticales (§14.5): la reacción total iguala el peso y pasa por la vertical del centro de masas.
 // Un grupo de dos puntos: reparto por cercanía y, lo que sobra en perpendicular, se corrige moviendo el apoyo dentro del pie.
-function apoyosVerticales(forces, grupos) {
+// Con dos grupos (X03-21) el suelo o el banco también pueden empujar en horizontal por rozamiento: `h` es esa fuerza (en PC; +h·d sobre el grupo B y −h·d sobre el A, repartida
+// a partes iguales entre sus puntos) y `g` la geometría de geoDos. Con h = 0 es el reparto de siempre.
+function apoyosVerticales(forces, grupos, h = 0, g = null) {
   let Rtot = 0, cx = 0, cz = 0;
   for (const f of forces) { Rtot -= f.f.y; cx -= f.f.y * f.p.x; cz -= f.f.y * f.p.z; }
   cx /= Rtot; cz /= Rtot;
   const res = [], put = (pt, R, e) => res.push({ p: pt.p.clone().add(e), f: V(0, R, 0), part: pt.part, tipo: 'apoyo' });
-  if (grupos.length === 2) {
+  if (grupos.length === 2 && h) {
+    const NB = g.nb0 + g.nb1 * h, hv = g.d.clone().multiplyScalar(h);
+    grupos.forEach((G, i) => G.forEach(q => res.push({ p: q.p.clone(), f: V(hv.x * (i ? 1 : -1) / G.length, (i ? NB : g.Rtot - NB) / G.length, hv.z * (i ? 1 : -1) / G.length), part: q.part, tipo: 'apoyo' })));
+  } else if (grupos.length === 2) {
     const g = grupos.map(G => [G.reduce((s, q) => s + q.p.x, 0) / G.length, G.reduce((s, q) => s + q.p.z, 0) / G.length]);
     const dx = g[1][0] - g[0][0], dz = g[1][1] - g[0][1], t = clamp(((cx - g[0][0]) * dx + (cz - g[0][1]) * dz) / (dx * dx + dz * dz));
     grupos.forEach((G, i) => G.forEach(q => put(q, (i ? t : 1 - t) * Rtot / G.length, V())));
@@ -613,6 +774,28 @@ function apoyosVerticales(forces, grupos) {
   }
   return res;
 }
+// Dos grupos de apoyo con fuerzas externas verticales (X03-21): A = grupos[0], B = grupos[1], d = dirección horizontal de A a B, Rtot = reacción vertical total y
+// NB(h) = nb0 + nb1·h la reacción vertical de B cuando además hay una fuerza horizontal h·d sobre B y −h·d sobre A (momentos respecto a A). Con h = 0 es el reparto clásico.
+function geoDos(forces, grupos) {
+  const c = G => G.reduce((a, q) => a.add(q.p), V()).divideScalar(G.length), A = c(grupos[0]), B = c(grupos[1]), d = V(B.x - A.x, 0, B.z - A.z), Lh = d.length();
+  if (Lh < 1e-4) return null;
+  d.divideScalar(Lh); let Rtot = 0, su = 0;
+  for (const f of forces) { Rtot -= f.f.y; su -= f.f.y * ((f.p.x - A.x) * d.x + (f.p.z - A.z) * d.z); }
+  return { d, Rtot, nb0: su / Lh, nb1: (B.y - A.y) / Lh };
+}
+// Rozamiento: |h| <= MU_ROZ·min(NA, NB) con las dos reacciones >= 0; cada desigualdad es lineal en h (a·h + b >= 0). Devuelve [mín, máx] o null si h = 0 no cabe
+// (el centro de masas queda fuera de los apoyos: se queda el reparto clásico). ponytail: un solo MU_ROZ para suelo y banco; si un apoyo es de goma o el banco es de piel, se separa.
+const MU_ROZ = 0.6;
+function limitesH({ Rtot, nb0, nb1 }) {
+  let lo = -Infinity, hi = Infinity;
+  for (const [a, b] of [[MU_ROZ * nb1 - 1, MU_ROZ * nb0], [MU_ROZ * nb1 + 1, MU_ROZ * nb0], [-MU_ROZ * nb1 - 1, MU_ROZ * (Rtot - nb0)], [-MU_ROZ * nb1 + 1, MU_ROZ * (Rtot - nb0)]]) {
+    if (Math.abs(a) < 1e-12) { if (b < 0) return null; } else if (a > 0) lo = Math.max(lo, -b / a); else hi = Math.min(hi, -b / a);
+  }
+  return lo <= 0 && hi >= 0 ? [lo, hi] : null;
+}
+// destino de una fuerza de apoyo inclinada, con el nombre del otro grupo (el hombro-banco se dice «el banco»)
+const HACIA = { pies: 'los pies', manos: 'las manos', hombros: 'el banco', 'pie delantero': 'el pie delantero', 'pie trasero': 'el pie trasero' };
+const haciaTxt = (otro, acerca) => acerca ? `hacia ${HACIA[otro]}` : `alejándose ${('de ' + HACIA[otro]).replace('de el ', 'del ')}`;
 // Capacidades por lado (PC·m, × K()): las cuatro primeras salen de las de solveStand; las demás, de partida.
 // Calibración (prueba 2 de tests/demand.js, contra el modelo de cuatro masas anterior): CAP.knee 0.20 -> 0.23 y CAP.hip 0.275 -> 0.20.
 const CAP = { knee: 0.23, hip: 0.20, hipFrontal: 0.15, ankle: 0.11, lumbar: 0.50, shoulder: 0.12, elbow: 0.08 };
@@ -634,29 +817,60 @@ const JOINTS = [
       return { flex: -M.dot(eS.length() < 1e-4 ? a.xT.clone().negate() : eS.normalize()) }; } },
 ];
 // P: pose final · ex: id de la acción · out: lo que devuelve evaluateInner (bar, pulley, maneral, plate, F…)
-// -> { forces: [{ p, f, part, tipo }], joints: [{ id, J, M, comp, d, q, arm, Fr }], act: { quads, … } (recortado 0–1), raw: los mismos doce sin recortar (el doce, `abs`, desde X03-19) }
+// -> { forces: [{ p, f, part, tipo }], joints: [{ id, J, M, comp, d, q, arm, Fr }], reparto: [{ nombre, pct, ang, hacia }] y roz: { h, hOpt, mu, NA, NB, E0, E, lim, d } (rozamiento, X03-21) con dos grupos de apoyo (si no, null), act: { quads, … } (recortado 0–1), raw: los mismos doce sin recortar (el doce, `abs`, desde X03-19) }
 function demand(P, ex, out) {
   const prm = state.per[ex], L = (prm.load ?? 0) / 100, parts = bodyParts(P);
   const forces = parts.map(q => ({ p: q.c, f: V(0, -q.m, 0), part: q.id, tipo: 'peso' }));
-  const sup = SUPPORTS[EXERCISES[ex].base](P, ex, out, L); forces.push(...sup.cargas);
-  if (sup.vert) forces.push(...apoyosVerticales(forces, sup.vert));
+  const sup = SUPPORTS[EXERCISES[ex].base](P, ex, out, L); if (!sup) return null;   // acción `libre` sin apoyos declarados: sin demanda
+  forces.push(...sup.cargas);
   const fijo = new Set(sup.fijo || []);
   // ejes del cuerpo
   const a = ejesCuerpo(P);
-  const momento = (J, ids, enIds) => { const M = V(), Fr = V(); for (const f of forces) if (ids.has(f.part) === enIds) { M.add(f.p.clone().sub(J).cross(f.f)); Fr.add(f.f); } return [M, Fr]; };
-  const joints = [];
-  for (const j of JOINTS) for (const S of j.S ? ['L', 'R'] : [null]) {
-    const J = j.J(P, S, a), dist = new Set(j.dist(S)), rec = { id: S ? `${j.id}.${S}` : j.id, J, M: null, comp: {}, d: {}, q: null, arm: null, Fr: null };
-    joints.push(rec);
-    // lado distal; si tiene un apoyo fijo se mide con el otro (y se cambia el signo); si los dos lo tienen, no se puede calcular
-    const dFijo = [...dist].some(i => fijo.has(i)), oFijo = parts.some(q => !dist.has(q.id) && fijo.has(q.id));
-    if (dFijo && oFijo) continue;
-    const [Mr, Fr] = momento(J, dist, !dFijo);
-    rec.M = dFijo ? Mr.clone().negate() : Mr; rec.Fr = Fr;
-    rec.comp = j.comp(rec.M, a, S, P);
-    for (const c in rec.comp) rec.d[c] = clamp(Math.abs(rec.comp[c]) / (CAP[j.cap[c]] * K()));
-    if (Fr.length() > 0.02) { rec.q = J.clone().add(Fr.clone().cross(Mr).divideScalar(Fr.lengthSq())); rec.arm = rec.q.distanceTo(J); }
-  }
+  // momento y brazo de cada articulación con una lista de fuerzas (§14.6); se llama una vez, o tres con dos grupos de apoyo (X03-21)
+  const articulaciones = fs => {
+    const momento = (J, ids, enIds) => { const M = V(), Fr = V(); for (const f of fs) if (ids.has(f.part) === enIds) { M.add(f.p.clone().sub(J).cross(f.f)); Fr.add(f.f); } return [M, Fr]; };
+    const js = [];
+    for (const j of JOINTS) for (const S of j.S ? ['L', 'R'] : [null]) {
+      const J = j.J(P, S, a), dist = new Set(j.dist(S)), rec = { id: S ? `${j.id}.${S}` : j.id, J, M: null, comp: {}, d: {}, q: null, arm: null, Fr: null };
+      js.push(rec);
+      // lado distal; si tiene un apoyo fijo se mide con el otro (y se cambia el signo); si los dos lo tienen, no se puede calcular
+      const dFijo = [...dist].some(i => fijo.has(i)), oFijo = parts.some(q => !dist.has(q.id) && fijo.has(q.id));
+      if (dFijo && oFijo) continue;
+      const [Mr, Fr] = momento(J, dist, !dFijo);
+      rec.M = dFijo ? Mr.clone().negate() : Mr; rec.Fr = Fr;
+      rec.comp = j.comp(rec.M, a, S, P);
+      for (const c in rec.comp) rec.d[c] = clamp(Math.abs(rec.comp[c]) / (CAP[j.cap[c]] * K()));
+      if (Fr.length() > 0.02) { rec.q = J.clone().add(Fr.clone().cross(Mr).divideScalar(Fr.lengthSq())); rec.arm = rec.q.distanceTo(J);
+        rec.pts = fs.filter(f => f.tipo !== 'peso' && dist.has(f.part) === !dFijo).map(f => f.p); }   // dónde nace esa fuerza (apoyos y cargas): para dibujar su línea hasta allí
+      // brazo de la CARGA (lo que se dibuja): contra la línea de la resistencia externa del lado distal, sin los pesos del cuerpo. Contra la resultante
+      // neta, donde la carga y el peso del tronco casi se anulan (el lumbar del jalón), la línea se va lejísimos (104 cm) y no dice nada
+      const cs = fs.filter(f => f.tipo !== 'peso' && dist.has(f.part) === !dFijo);   // cargas y apoyos, sin los pesos del cuerpo: la cadera y la rodilla del hip thrust miden contra LA MISMA línea, la del pie
+      if (cs.length) { const Mc = V(), Fc = V(); for (const f of cs) { Mc.add(f.p.clone().sub(J).cross(f.f)); Fc.add(f.f); }
+        if (Fc.length() > 0.02) { rec.qL = J.clone().add(Fc.clone().cross(Mc).divideScalar(Fc.lengthSq())); rec.armL = rec.qL.distanceTo(J); rec.FL = Fc; rec.ptsL = cs.map(f => f.p); rec.deCarga = cs.some(f => f.tipo === 'carga'); } }
+    }
+    return js;
+  };
+  let joints, reparto = null, roz = null;   // reparto: con dos grupos verticales, cuánto de la reacción total lleva cada uno (para el panel); roz: el rozamiento elegido
+  if (sup.vert) {
+    // dos grupos y cargas solo verticales (X03-21): el rozamiento h* es el que menos esfuerzo pide (optimización estática, Crowninshield y Brand 1981, sobre los momentos articulares)
+    let h = 0, g = null, lim = null, j0 = null, E0 = 0, hOpt = 0;
+    const cap = (id, c) => CAP[JOINTS.find(x => x.id === id.split('.')[0]).cap[c]] * K();
+    const esf = js => js.reduce((t, j) => t + (j.M ? Object.keys(j.comp).reduce((u, c) => u + (j.comp[c] / cap(j.id, c)) ** 2, 0) : 0), 0);   // E = Σ (comp / (CAP·K))²
+    if (sup.vert.length === 2 && sup.cargas.every(c => !c.f.x && !c.f.z) && (g = geoDos(forces, sup.vert)) && (lim = limitesH(g))) {
+      j0 = articulaciones([...forces, ...apoyosVerticales(forces, sup.vert)]); E0 = esf(j0);
+      const j1 = articulaciones([...forces, ...apoyosVerticales(forces, sup.vert, 1, g)]); let num = 0, den = 0;   // comp(h) = c0 + h·Δ: el mínimo pesa cada componente por 1/(CAP·K)²
+      j0.forEach((j, i) => { if (j.M) for (const c in j.comp) { const w = 1 / cap(j.id, c) ** 2, d = j1[i].comp[c] - j.comp[c]; num += w * j.comp[c] * d; den += w * d * d; } });
+      hOpt = den > 1e-12 ? -num / den : 0; h = clamp(hOpt, lim[0], lim[1]);
+    }
+    const ap = apoyosVerticales(forces, sup.vert, h, g); forces.push(...ap);
+    joints = h || !j0 ? articulaciones(forces) : j0;
+    if (sup.nombres && sup.vert.length === 2) {
+      const R = sup.vert.map(G => ap.filter(f => G.some(q => q.part === f.part)).reduce((a, f) => a + f.f.y, 0)), t = R[0] + R[1];
+      reparto = sup.vert.map((G, i) => ({ nombre: sup.nombres[i], pct: 100 * R[i] / t, ang: Math.atan(Math.abs(h) / R[i]) / DEG, hacia: h ? haciaTxt(sup.nombres[1 - i], h < 0) : null }));
+      for (const f of ap) { const i = sup.vert.findIndex(G => G.some(q => q.part === f.part)); f.hacia = reparto[i].hacia; }   // para las cifras de la capa Apoyo
+      if (g) roz = { h, hOpt, mu: MU_ROZ, NA: R[0], NB: R[1], E0, E: esf(joints), lim, d: g.d };
+    }
+  } else joints = articulaciones(forces);
   // de momento a demanda: el mayor de los dos lados (una articulación sin calcular aporta 0)
   const val = (id, c, sg = 1) => Math.max(0, ...joints.filter(j => j.M && (j.id === id || j.id.startsWith(id + '.'))).map(j => sg * j.comp[c]));
   const beta = Math.max(...['L', 'R'].map(S => P[`DEF-SHIN01.${S}`].p.clone().sub(P[`DEF-THIGH01.${S}`].p).angleTo(V(0, -1, 0)))), deep = clamp(beta / (110 * DEG));
@@ -678,20 +892,100 @@ function demand(P, ex, out) {
   };
   const act = musculos(clamp), raw = musculos(x => x);
   for (const k in act) act[k] = clamp(act[k]);
-  return { forces, joints, act, raw };
+  return { forces, joints, act, raw, reparto, roz };
+}
+
+const VARIANT = id => POSES.exercises[id]?.meta?.of;
+const variantFor = (ex, grip) => Object.keys(POSES.exercises).find(id => VARIANT(id) === ex && POSES.exercises[id].meta.grip === grip);
+// ---- afinado del usuario (X03-27): un dato por acción (`ajustes/<acción>.json`, lo mete build.py), la capa entre las reglas y la app. Muñeca y codos, en grados, en tres instantes (s = 0, 0,5 y 1),
+// con un valor `base` y, por ajuste del entrenador, otro en su mínimo y en su máximo; más los rangos de los ajustes. Sin archivo, todo vale 0 y los rangos son los del código
+const AJ = JSON.parse(document.getElementById('ajustes-json')?.textContent || '{}');
+let AJ_VER = 0;   // sube al editar el afinado: invalida las cachés que dependen de él (sFin)
+const ajSet = (act, v) => { if (v) AJ[act] = v; else delete AJ[act]; AJ_VER++; };
+const GRIP_HALF_MIN = 0.08, GRIP_HALF_MAX = 0.55, gripHalf = ex => Math.abs(jalonData(actOf(ex)).side.L.along);   // media anchura de agarre de la acción (m) y sus topes
+const actOf = ex => JALON(ex) ? variantFor(ex, state.per[ex]?.gripType) || ex : ex;   // la acción del agarre elegido
+// interpolación entre los tres valores (inicio, mitad, final) como las claves de Blender en «auto clamped»: pendiente 0 en los extremos y en una
+// clave que es máximo o mínimo, sin pasarse nunca de los valores puestos (Hermite monótono, Fritsch–Carlson). Antes era la parábola por los tres
+// puntos: cambiaba deprisa nada más salir del inicio y se pasaba (con [30, 0, 0], −3,8 al 75 %)
+const keys3 = (v, t) => { const d0 = 2 * (v[1] - v[0]), d1 = 2 * (v[2] - v[1]);
+  const m1 = d0 * d1 <= 0 ? 0 : Math.sign(d0) * Math.min((Math.abs(d0) + Math.abs(d1)) / 2, 3 * Math.min(Math.abs(d0), Math.abs(d1)));
+  const [a, b, ma, mb, u] = t <= 0.5 ? [v[0], v[1], 0, m1, t * 2] : [v[1], v[2], m1, 0, t * 2 - 1], h = 0.5, u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * a + (u3 - 2 * u2 + u) * h * ma + (-2 * u3 + 3 * u2) * b + (u3 - u2) * h * mb; };
+// «mitad» es la mitad del GESTO, no del tiempo: en el jalón, a mitad de tiempo la barra lleva el 36 % del recorrido (las escápulas van antes
+// que el codo). El progreso es lo que han bajado las manos en la acción de Blender (0 al inicio, 1 al final); sin manos que se muevan, el tiempo
+const PROG = {};
+const progOf = act => PROG[act] ??= withBody(DEFAULT_BODY, () => { const y = i => { const P = authoredPose(act, i / 60); return (P['DEF-HAND.L'].p.y + P['DEF-HAND.R'].p.y) / 2; };
+  const ys = Array.from({ length: 61 }, (_, i) => y(i)), span = ys[0] - ys[60]; if (Math.abs(span) < 0.05) return null;
+  let m = 0; return ys.map(v => (m = Math.max(m, clamp((ys[0] - v) / span)))); });
+const progAt = (act, s) => { const t = progOf(act); if (!t) return s; const x = clamp(s) * 60, i = Math.min(59, Math.floor(x)); return lerp(t[i], t[i + 1], x - i); };
+const sOfProg = (act, p) => { const t = progOf(act); if (!t) return p; const i = t.findIndex(v => v >= p - 1e-9); if (i <= 0) return 0; return (i - 1 + (p - t[i - 1]) / ((t[i] - t[i - 1]) || 1)) / 60; };
+const quad = (v, s) => keys3(v, s);
+// magnitudes afinables por modelo (X03-28): el panel del editor se genera de aquí y `fineAt` suma todas; añadir una es una línea. Todas valen 0 por defecto y tienen tres valores (inicio, mitad, final)
+const AFINABLES = { jalon: [
+  { parte: 'mano', label: 'Mano', mags: [
+    { id: 'muneca', label: 'Flexión', unidad: '°', min: -45, max: 45, paso: 1, ayuda: 'Giro de la mano alrededor de la barra: + lleva la palma hacia el antebrazo.' },
+    { id: 'desv', label: 'Desviación', unidad: '°', min: -30, max: 30, paso: 1, ayuda: 'Giro de la mano sobre la palma: + lleva los dedos hacia el meñique.' }] },
+  { parte: 'codo', label: 'Codo', mags: [{ id: 'codos', label: 'Giro', unidad: '°', min: -90, max: 90, paso: 1, ayuda: 'Giro del codo alrededor de la línea hombro–muñeca: + los abre.' }] },
+  { parte: 'barra', label: 'Barra en la mano', mags: [
+    { id: 'barraDedos', label: 'Hacia los dedos', unidad: ' mm', min: -20, max: 20, paso: 1, ayuda: 'Dónde queda la barra a lo largo de la mano: + hacia los dedos, − hacia la muñeca.' },
+    { id: 'barraPalma', label: 'Hacia la palma', unidad: ' mm', min: -15, max: 15, paso: 1, ayuda: 'Cuánto se hunde la barra en la palma: + más dentro.' }] },
+  { parte: 'escap', label: 'Escápulas', mags: [{ id: 'escap', label: 'Subir / bajar', unidad: '%', min: -50, max: 50, paso: 1, ayuda: 'Se suma a su recorrido entre abajo y arriba: + las sube.' }] },
+  { parte: 'tronco', label: 'Tronco', mags: [{ id: 'tronco', label: 'Inclinación', unidad: '°', min: -15, max: 15, paso: 1, ayuda: 'Se suma a la inclinación del tronco: + hacia delante.' }] },
+] };
+const afPartes = ex => (JALON(ex) ? AFINABLES.jalon : null) || [];
+const afMags = ex => afPartes(ex).flatMap(p => p.mags);
+// afinado efectivo en `s` con los ajustes `prm`: por magnitud, base + Σ peso · (extremo − base), con peso = lo lejos que está el ajuste de su valor por defecto hacia ese extremo (0..1)
+function fineAt(act, prm, s) {
+  const f = AJ[act], mags = afMags(act), out = Object.fromEntries(mags.map(m => [m.id, 0]));
+  if (!f) return out;
+  const ws = Object.entries(f.en || {}).flatMap(([id, e]) => { const p = PSET(act).find(p => p.id === id && !p.hide?.(act)); if (!p) return [];
+    const r = rangoOf(act, p), x = prm[id], hi = x > r.def, w = hi ? (x - r.def) / ((r.max - r.def) || 1) : x < r.def ? (r.def - x) / ((r.def - r.min) || 1) : 0; return [[e[hi ? 'max' : 'min'], clamp(w)]]; });
+  for (const { id: m } of mags) {
+    const b = f.base?.[m] || [0, 0, 0], v = b.slice();
+    for (const [ext, w] of ws) if (ext?.[m]) for (let i = 0; i < 3; i++) v[i] += w * (ext[m][i] - b[i]);
+    out[m] = keys3(v, progAt(act, s));
+  }
+  return out;
+}
+// ajustes iniciales de cada ejercicio (aquí y no arriba: los valores por defecto de `defOf` miden las claves de la acción)
+for (const [id, ex] of Object.entries(EXERCISES)) state.per[id] = Object.fromEntries(PSET(id).map(p => [p.id, pdef(id, p)]));
+// variantes (acción con `ff_variant_of`, p. ej. Chinup = dominada supina): no son un ejercicio aparte; comparten los ajustes del
+// suyo y se usan desde su chip de agarre (variantFor)
+for (const id of Object.keys(EXERCISES)) if (VARIANT(id) && state.per[VARIANT(id)]) state.per[id] = state.per[VARIANT(id)];
+// jalón: cada agarre es una acción con sus propios ajustes (anchura, polea, tronco…): al cambiar de agarre se guardan los del que se deja y se
+// ponen los del nuevo (los que tenía, o sus valores por defecto: los del código o los `rangos` de su afinado). Antes se arrastraban de uno a otro
+const PER_ACT = {};
+function setGrip(ex, v) {
+  const prm = state.per[ex]; PER_ACT[actOf(ex)] = { ...prm }; prm.gripType = v;
+  const saved = PER_ACT[actOf(ex)];
+  for (const p of PSET(ex)) if (p.id !== 'gripType') prm[p.id] = saved ? saved[p.id] : pdef(ex, p);
 }
 
 /* ---------------- Evaluación de un frame ---------------- */
 function evaluate(ex, s) {
   const base = EXERCISES[ex].base, prm = state.per[ex];
-  // dominada: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime
-  if (base === 'hang' || base === 'cable') { const lo = prm.bottom, hi = Math.max(prm.top, lo + 5); s = (lo + (hi - lo) * ramp(s, lo > 0 ? 0 : 1, hi < 100 ? 0 : 1)) / 100; }
+  if (base === 'cable' && JALON(ex)) ex = variantFor(ex, prm.gripType) || ex;   // jalón: el agarre elige su acción
+  // dominada y polea: el recorrido se recorta por arriba (hasta dónde sube) y por abajo (desde dónde baja); no se comprime. Jalón: además acaba en `sFin` (R4)
+  const sf = base === 'cable' && JALON(ex) ? sFin(ex) : 1;
+  if (base === 'hang' || base === 'cable') { const lo = prm.bottom, hi = Math.max(Math.min(prm.top, sf * 100), lo + 5); s = Math.min((lo + (hi - lo) * ramp(s, lo > 0 ? 0 : 1, hi < 100 ? 0 : 1)) / 100, sf); }   // (con «Desde dónde empieza» más allá de sFin, se queda en sFin)
   // agarre con su propia acción (supino: Chinup); el neutro sale de la supina si la hay (los codos ya van hacia delante)
   if (base === 'hang') ex = variantFor(ex, prm.gripType) || (prm.gripType === 'neutro' && variantFor(ex, 'supino')) || ex;
-  if (base === 'cable' && JALON(ex)) ex = variantFor(ex, prm.gripType) || ex;   // jalón: el agarre elige su acción
   // remo: el supino con su acción (barbell_row_supino) si la hay; con barra, el recorrido se corta en el codo máximo (frenando)
   if (base === 'row') { ex = variantFor(ex, prm.gripType) || ex; const c = rowCut(ex); s = c * ramp(s, 1, c < 1 ? 0 : 1); }
-  return evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s);
+  const r = evaluateRaw(ex, base === 'hinge' ? hingeS(ex, s) : s); if (sf < 1) r.sFin = sf; return r;
+}
+// R4 (X03-26): hasta dónde llega la repetición del jalón: el primer s en que el antebrazo, visto de lado, se aparta del cable más que ALIGN_TOL respecto a la acción (31 puntos y bisección);
+// 1 si nunca. Va sin recorte (evaluateRaw) y se guarda por cuerpo y ajustes
+const SFIN = {};
+function sFin(ex) {
+  const k = ex + AJ_VER + JSON.stringify(state.body) + JSON.stringify(state.per[ex]);
+  if (k in SFIN) return SFIN[k];
+  const bad = s => evaluateRaw(ex, s).align.excess > ALIGN_TOL;
+  let lo = 0, hi = null;
+  for (let i = 0; i <= 30 && hi === null; i++) { if (bad(i / 30)) hi = i / 30; else lo = i / 30; }
+  if (hi === null) return SFIN[k] = 1;
+  for (let i = 0; i < 12; i++) { const m = (lo + hi) / 2; if (bad(m)) hi = m; else lo = m; }
+  return SFIN[k] = lo;
 }
 // Demanda con los ajustes y el cuerpo por defecto (la pose autorada), para enseñar en el panel cuánto cambian las articulaciones (X03-12).
 // SOLO se llama desde frameLoop, nunca desde evaluate/evaluateInner (se llamaría a sí misma). Se cachea por acción y s: la autorada no
@@ -703,7 +997,7 @@ function evaluateDefault(ex, s) {
   const body = state.body, prm = state.per[ex], alias = Object.keys(state.per).filter(k => state.per[k] === prm);
   try {
     state.body = DEFAULT_BODY;
-    const def = Object.fromEntries(PARAMS[EXERCISES[ex].base].map(p => [p.id, p.def]));
+    const def = Object.fromEntries(PSET(ex).map(p => [p.id, pdef(ex, p)]));
     for (const k of alias) state.per[k] = def;
     return (DEMDEF[key] = evaluate(ex, s).dem);
   } finally { state.body = body; for (const k of alias) state.per[k] = prm; }
@@ -799,22 +1093,14 @@ function evaluateInner(ex, s) {
       : socketRest(S).multiplyScalar(d.k).applyQuaternion(qHandA(S).multiply(REST[`DEF-HAND.${S}`].q.clone().invert()));
     const md = cable && manData(ex);
     // ---- construcción de la pose para una inclinación de tronco (y una cadera) dadas
-    // polea, «Balanceo» (X03-22): cada hueso del tronco (pelvis, columna, pecho, cuello, cabeza) escala su giro respecto a como está a
-    // mitad de la repetición (0 % = el tronco entero quieto como a la mitad; 200 % = el doble hacia delante al soltar y hacia atrás al
-    // tirar). Antes se dejaba quieta la línea cadera→hombros: esa línea incluye la protracción de las escápulas y el tronco giraba al
-    // revés para compensarla (8° de pecho y 40° de cabeza con el balanceo a 0). Escápulas y brazos van con el pecho
-    // ponytail: `u`/`n` (dirección del tronco para «Hacia dónde tira») siguen saliendo de la línea autorada; con poco balanceo se desvían unos grados
-    const authQ = {};
-    if (cable && prm.swing !== 100) { const ref = withBody(DEFAULT_BODY, () => authoredPose(ex, 0.5)), t = prm.swing / 100;
-      const sw = n => qPow(auth[n].q.clone().multiply(ref[n].q.clone().invert()), t).multiply(ref[n].q), dC = sw('DEF-CHEST').multiply(auth['DEF-CHEST'].q.clone().invert());
-      const arms = new Set([...subtree('DEF-SHOULDER.L'), ...subtree('DEF-SHOULDER.R')]), legs = new Set([...subtree('DEF-THIGH01.L'), ...subtree('DEF-THIGH01.R')]);
-      for (const n of BN) if (!legs.has(n)) authQ[n] = arms.has(n) ? dC.clone().multiply(auth[n].q) : sw(n); }
+    // «Tronco al inicio / al final» (X03-26): giro hueso a hueso (authQ) o, si la acción no mueve el tronco, rígido (dRigid)
+    const { q: authQ, rigid: dRigid = 0 } = cable ? trunkQ(ex, prm, auth, s) : {};
     const build = (phi, hipT, barShift = 0) => {
     const pose = clonePose(auth), warns = [];
     const R = QA(X, phi - F.phi);                       // +phi = hacia delante (+Z)
     const hipA = F.hip;
     const legSet = new Set([...subtree('DEF-THIGH01.L'), ...subtree('DEF-THIGH01.R')]);
-    for (const n of BN) if (!legSet.has(n)) { pose[n].q = R.clone().multiply(authQ[n] || auth[n].q); }
+    for (const n of BN) if (!legSet.has(n)) { pose[n].q = R.clone().multiply(authQ?.[n] || auth[n].q); }
     pose['DEF-HIPS'].p = hipT.clone().add(auth['DEF-HIPS'].p.clone().sub(hipA).applyQuaternion(R));
     fkSub(pose, 'DEF-HIPS');
     if (cable && prm.curv) {   // curvatura del tronco (X03-20): mitad del giro en SPINE01 y mitad en SPINE02, cada uno arrastra solo a sus hijos; pelvis y piernas quietas
@@ -824,12 +1110,10 @@ function evaluateInner(ex, s) {
       for (const root of ['DEF-SPINE01', 'DEF-SPINE02']) { const c = pose[root].p.clone();
         for (const n of subtree(root)) { pose[n].q = qc.clone().multiply(pose[n].q); if (n !== root) pose[n].p = pose[n].p.clone().sub(c).applyQuaternion(qc).add(c); } }
     }
-    if (cable && (prm.scapPlay !== 100 || prm.scapPos)) {   // juego escapular (X03-23): el giro de la escápula respecto al pecho, escalado alrededor de una referencia
-      const SR = scapR(ex), wide = !JALON(ex), C = pose['DEF-CHEST'];   // remo: referencia y base entre inicio y final; jalón: abajo (el final)
-      for (const S of ['L', 'R']) { const [[q0, v0], [q1, v1]] = SR[S], sn = `DEF-SHOULDER.${S}`, [r, v] = scapRel(auth, S), tb = wide ? 0.5 + prm.scapPos / 200 : 1, tr = wide ? 0.5 : 1;
-        const ref = q0.clone().slerp(q1, tr), base = q0.clone().slerp(q1, tb);
-        pose[sn].q = C.q.clone().multiply(qPow(r.multiply(ref.clone().invert()), prm.scapPlay / 100).multiply(base));
-        pose[sn].p = v.sub(v0.clone().lerp(v1, tr)).multiplyScalar(prm.scapPlay / 100).add(v0.clone().lerp(v1, tb)).applyQuaternion(C.q).add(C.p); fkSub(pose, sn); }
+    if (cable && (prm.scap0 !== 100 || prm.scap1 !== 0 || fineAt(ex, prm, s).escap)) {   // escápulas al inicio y al final (X03-26), con giros relativos al pecho; los brazos se recolocan solos
+      const C = pose['DEF-CHEST'];
+      for (const S of ['L', 'R']) { const sn = `DEF-SHOULDER.${S}`, [r, v] = scapAt(ex, prm, auth, S, s);
+        pose[sn].q = C.q.clone().multiply(r); pose[sn].p = v.multiplyScalar(kk).applyQuaternion(C.q).add(C.p); fkSub(pose, sn); }
     }
     // piernas
     for (const [S, sgn] of [['L', 1], ['R', -1]]) {
@@ -847,7 +1131,8 @@ function evaluateInner(ex, s) {
     }
     // barra y brazos: en la espalda gira con el tronco (Rh = R); colgada de las manos no gira (Rh = identidad)
     const shNow = midOf(pose, 'DEF-ARM01.L', 'DEF-ARM01.R'), Rh = hinge ? qP.clone() : R;
-    const u = V(0, Math.cos(phi), Math.sin(phi)), n = V(0, -Math.sin(phi), Math.cos(phi));
+    const ph = cable ? sag(shNow.clone().sub(midOf(pose, 'DEF-THIGH01.L', 'DEF-THIGH01.R'))) : phi;   // polea: la línea cadera→hombros de la pose (el tronco va hueso a hueso)
+    const u = V(0, Math.cos(ph), Math.sin(ph)), n = V(0, -Math.sin(ph), Math.cos(ph));
     let bar = hinge ? shNow.clone().add(F.bar.clone().sub(F.sh).multiplyScalar(d.k / d0.k))   // brazos colgando: mismo vector hombro→barra...
       : shNow.clone().addScaledVector(u, barOff.du).addScaledVector(n, barOff.dn).add(V((barOff0.dx || 0) * d.k / d0.k, 0, 0));
     if (row) {
@@ -864,9 +1149,13 @@ function evaluateInner(ex, s) {
         const hs = (one ? pose[`DEF-ARM01.${WS}`].p : shNow), Ba = F.hip.clone().add(F.bar.clone().sub(F.hip).multiplyScalar(kr)).add(offP);
         const dir = pulleyAt(ex, prm.pulleyH, prm.pulleyF).sub(Ba).normalize(), w = Ba.clone().sub(hs), b = w.dot(dir), disc = b * b - (w.lengthSq() - rA * rA);
         let t = -b;   // sin intersección: el punto de la recta más cercano al hombro
+        // jalón (X03-26): la raíz cuadrada se dispara cuando el cable es perpendicular a hombro→barra (justo al final del tirón: tangente) y la barra daba saltos de 9 cm. Se usa su linealización
+        // t = −Δ/(2b), con b amortiguada (b/(b² + ε²)): igual de exacta por defecto (Δ = 0) y con la sensibilidad acotada. El resto lo corrige el brazo estirado (barShift) y el codo
+        const lin = -(w.lengthSq() - rA * rA) * b / (2 * (b * b + JAL_EPS * JAL_EPS));
         // de las dos soluciones, la más cercana a la polea (el maneral queda «por delante» del hombro a lo largo del cable): es la autorada en las
         // cuatro acciones (b0 > 0 en todo el recorrido) y, como no cambia de una a otra al mover el hombro, no salta (la «más cercana a Ba» sí)
-        if (disc >= 0) t = -b + Math.sqrt(disc);
+        if (JALON(ex)) t = lin;
+        else if (disc >= 0) t = -b + Math.sqrt(disc);
         else if (Math.sqrt(w.lengthSq() - b * b) - rA > 0.01) warns.push('El maneral no llega: el hombro queda lejos del cable');
         bar = Ba.addScaledVector(dir, t);
         bar.addScaledVector(u, -(prm.dest - chest) / 100 * kk * up);
@@ -922,6 +1211,7 @@ function evaluateInner(ex, s) {
     }
     if (!man) for (const [S, sgn] of [['L', 1], ['R', -1]]) {
       if (one && S !== WS) continue;   // a un brazo: el otro brazo, el de Blender (girado con el tronco)
+      if (JALON(ex)) continue;         // el jalón: más abajo (jalonArms)
       const hn = `DEF-HAND.${S}`, sock = socketRest(S);
       let grip;
       if (hinge) grip = bar.clone().add(gripOff(S));
@@ -957,6 +1247,42 @@ function evaluateInner(ex, s) {
       }
       if (ik.miss > 0.01) warns.push(`La mano ${S === 'L' ? 'izquierda' : 'derecha'} no llega a la barra (${Math.round(ik.miss * 100)} cm)`);
     }
+    const jGrips = [];
+    if (JALON(ex)) {   // jalón sobre Blender (X03-26): R1 barra en el hueco de la mano, R2 mano con el antebrazo, R3 codo que alinea el antebrazo con el cable
+      const JD = jalonData(ex), P = pulleyAt(ex, prm.pulleyH, prm.pulleyF), cA = pulleyAt(ex, 0, 0).sub(F.bar).normalize();
+      const fine = fineAt(ex, prm, s), munR = fine.muneca * DEG, desvR = fine.desv * DEG, libH = libraryHand(ex), elbD = fine.codos + lerp(prm.elbows0, prm.elbows1, s * s * (3 - 2 * s));   // el afinado del usuario (X03-27): flexión de muñeca y giro de los codos, en s
+      for (let fix = 0; fix < 6; fix++) {
+        const c = P.clone().sub(bar).normalize(); let miss = 0; jGrips.length = 0;
+        for (const [S, sgn] of [['L', 1], ['R', -1]]) {
+          const hn = `DEF-HAND.${S}`, jd = JD.side[S], Sh = pose[`DEF-ARM01.${S}`].p, aSh = auth[`DEF-ARM01.${S}`].p, aE = auth[`DEF-FORARM01.${S}`].p, aW = auth[hn].p, { Lu, Lf } = LEN(S);
+          const lim = 0.9 * jd.R0 * kr, G = bar.clone().addScaledVector(axis, Sh.x + clamp(jd.along * prm.grip * kr - Sh.x, -lim, lim));   // R1: un punto fijo de la barra (sobre el eje); el agarre se recorta para que el brazo llegue
+          const qH0 = Rh.clone().multiply(auth[hn].q);
+          const ax = jd.axis.clone().applyQuaternion(qH0), psiH0 = psiOf(Y.clone().applyQuaternion(qH0), ax), eA = elbowAng(aSh, aW, cA, aW.distanceTo(aE));
+          const stabG = jd.stab ? smooth01((s - jd.stab.sc) / STAB_FADE) : 1;   // R3 no actúa mientras el codo es estable y entra poco a poco en los STAB_FADE siguientes
+          const poleA = jd.stab && s < jd.stab.sc ? stablePole(aW.clone().sub(aSh).normalize(), jd.stab.th) : poleOf(aSh, aE, aW);   // codo estable al empezar: con el brazo casi recto, el giro del primer instante en que el codo está definido
+          const pole0 = poleA.clone().applyQuaternion(Rh); pole0.lerp(pole0.clone().applyQuaternion(R), up).normalize();
+          const offA = wrapA(swivel(aW.clone().sub(aSh).normalize(), poleA) - eA.phi);   // dónde está el codo autorado respecto al «de regla»
+          const poleFor = W => { const e = elbowAng(Sh, W, c, Lf), ax = W.clone().sub(Sh).normalize(), g = clamp(Math.min(e.r, eA.r) / (0.25 * Lf)) * stabG;   // R3: el codo conserva ese desfase respecto al «de regla» (sin(Δ) en vez de Δ envuelto: continuo aunque el codo «de regla» quede al otro lado); g lo apaga con el brazo casi recto
+            return pole0.clone().applyAxisAngle(ax, g * Math.sin(e.phi + offA - swivel(ax, pole0)) + sgn * elbD * DEG); };
+          // bisagra autorada de referencia: con el brazo casi recto el plano del codo de la acción es ruido (el codo se aparta 1-4 cm y cambia
+          // de lado), y como `solveLimb` gira el hueso lo que cambia ese plano, el húmero daba una vuelta de ~70° sobre sí mismo al empezar
+          // (medido en supino y neutro). Mientras el codo es estable se usa la bisagra del giro estable, y se funde con la de la acción después
+          const axA = aW.clone().sub(aSh).normalize(), hReal = aE.clone().sub(aSh).cross(aW.clone().sub(aE));
+          const hingeA = jd.stab && stabG < 1 ? stablePole(axA, jd.stab.th).cross(axA).normalize().lerp(hReal.lengthSq() > 1e-10 ? hReal.normalize() : stablePole(axA, jd.stab.th).cross(axA), stabG).normalize() : undefined;
+          const chain = [`DEF-ARM01.${S}`, `DEF-ARM02.${S}`, `DEF-FORARM01.${S}`, `DEF-FORARM0.${S}`, hn], hol = hollowFine(jd, fine.barraDedos / 1000, fine.barraPalma / 1000, kk), wristFor = q => G.clone().sub(hol.clone().multiplyScalar(kk).applyQuaternion(q));
+          let q = qH0, ik, th = 0;
+          for (let it = 0; it <= JAL_IT; it++) {   // R2 (X03-27, absoluta): la mano gira alrededor del eje del puño (th) hasta quedar en línea con el antebrazo más la flexión afinada; punto fijo amortiguado, y una última vuelta con la mano ya fijada
+            q = QA(ax, th).multiply(qH0); q = QA(jd.palm.clone().applyQuaternion(q), sgn * desvR).multiply(q); const W = wristFor(q); ik = solveLimb(pose, auth, chain, W, poleFor(W), [Lu, Lf], hingeA);
+            if (it < JAL_IT) th += JAL_RELAX * wrapA(-sgn * munR + psiOf(W.clone().sub(ik.mid), ax) - psiH0 - th);
+          }
+          const dq = q.clone().multiply(qH0.clone().invert()); for (const k of subtree(hn)) pose[k].q = dq.clone().multiply(Rh.clone().multiply(auth[k].q));
+          if (libH) for (const c in libH[S]) pose[c].q = q.clone().multiply(libH[S][c]);   // los dedos de la mano de la biblioteca (X03-28), relativos a la mano
+          fkSub(pose, `DEF-SHOULDER.${S}`); jGrips.push(G); miss = Math.max(miss, ik.miss);
+        }
+        if (miss < 1e-5) break;
+        bar.addScaledVector(shNow.clone().sub(bar).normalize(), miss + 0.001);   // alguna mano no llega: la barra se acerca (cede el codo, no la mano)
+      }
+    }
     if (md && !man) {   // muñeca de Blender: las manos son las de la acción y el maneral va donde lo pone la mano que tira
       const S = WS, e = md[S], qMS = pose[`DEF-HAND.${S}`].q.clone().multiply(e.relQ), grip = pose[`DEF-HAND.${S}`].p.clone().add(e.hg.clone().multiplyScalar(d.k).applyQuaternion(pose[`DEF-HAND.${S}`].q));
       const pM = grip.sub(e.ag.clone().applyQuaternion(qMS));
@@ -971,14 +1297,14 @@ function evaluateInner(ex, s) {
       const qi = auth[hn].q.clone().invert(); for (const c of subtree(hn)) pose[c].q = qh.clone().multiply(qi.clone().multiply(auth[c].q));
       fkSub(pose, `DEF-SHOULDER.${S}`);
     }
-    return { pose, bar, axis, warns, man, grips: man?.grips || (hinge && (one ? [WS] : ['L', 'R']).map(S => bar.clone().add(gripOff(S)))) };
+    return { pose, bar, axis, warns, man, grips: man?.grips || (JALON(ex) ? jGrips : hinge && (one ? [WS] : ['L', 'R']).map(S => bar.clone().add(gripOff(S)))) };
     };
     // ---- equilibrio en lazo cerrado sobre la pose real: el centro de masas del sistema (cuerpo + barra)
     // se mantiene sobre el mediopié igual que en la pose autorada; se corrige con la inclinación del tronco.
     let phiA, bA, betaH = beta, thH = th;
     if (cable) {
       // polea: la pelvis queda en el asiento (la autorada). Sin equilibrio: sentado y con los pies apoyados
-      phiA = F.phi + prm.trunk * DEG;   // el balanceo va hueso a hueso (authQ, arriba); aquí solo «Inclinación»
+      phiA = F.phi + dRigid;   // «Tronco al inicio / al final» (X03-26): el giro hueso a hueso va en authQ
       // (en el jalón «Flexión de rodilla» está escondida y no actúa: con la pelvis deslizada el hombro se aleja del cable)
       // con «Flexión de rodilla» o con otras medidas, los pies no se mueven de la plataforma: la pelvis se desliza por el asiento
       // (delante/atrás) hasta que cada pierna mide lo que dan muslo y tibia con la rodilla autorada + el ajuste. Por defecto, 0
@@ -994,11 +1320,13 @@ function evaluateInner(ex, s) {
       const reach = r => r.pose[`DEF-HAND.${WS}`].p.distanceTo(r.pose[`DEF-ARM01.${WS}`].p);
       bA = build(phiA, hipC);
       if (up < 1) {
-        const r0 = reach(bA), want = r0 + (1 - up) * (auth[`DEF-HAND.${WS}`].p.distanceTo(auth[`DEF-ARM01.${WS}`].p) * kr - r0);
+        const r0 = reach(bA); let want = Math.min(r0 + (1 - up) * (auth[`DEF-HAND.${WS}`].p.distanceTo(auth[`DEF-ARM01.${WS}`].p) * kr - r0), 0.99 * (LEN(WS).Lu + LEN(WS).Lf));   // (el brazo no da más de lo que mide)
+        if (JALON(ex)) want = Math.max(want, Math.abs(bA.pose[`DEF-HAND.${WS}`].p.x - bA.pose[`DEF-ARM01.${WS}`].p.x) + 0.01);   // ni la muñeca puede estar más cerca del hombro que lo que se aparta de lado (agarre ancho)
         if (Math.abs(r0 - want) > 0.0005) {   // (ya está: por defecto no se toca)
         // bisección (cerca del brazo recto la distancia se satura y una secante lo sacaba del alcance): alejar el maneral alarga
         // hombro→muñeca hasta que el brazo no da más; se queda en el último punto al que la mano llega
-        let lo = r0 < want ? 0 : -0.2, hi = r0 < want ? 0.2 : 0;
+        const MAXS = JALON(ex) ? 0.12 * (1 - up) : 0.2;   // jalón: el brazo estirado mueve la barra como mucho 12 cm, y nada al final (up = 1): más era una raíz falsa (saltos de 17 cm al pasar de `up < 1` a `up = 1`)
+        let lo = r0 < want ? 0 : -MAXS, hi = r0 < want ? MAXS : 0;
         for (let i = 0; i < 10; i++) { const m = (lo + hi) / 2, b = build(phiA, hipC, m), ok = !b.warns.length;
           if (reach(b) < want && ok) lo = m; else hi = m; if (ok) bA = b; }
         }
@@ -1090,7 +1418,8 @@ function evaluateInner(ex, s) {
         return { p: V(a.x * prm.stance * kr, a.y, a.z).add(c0), n: V(0, -1, 0).applyQuaternion(Rf), up: V(0, 0, 1).applyQuaternion(Rf) }; });
       out.footPlate = { p: sole[0].p.clone().add(sole[1].p).multiplyScalar(0.5), n: sole[0].n, up: sole[0].up };
       out.pulley = P; out.path = bar.clone(); out.mid = bar.z; out.com = bar.z; out.maneral = bA.man;
-      out.readout = [['Tronco', `${Math.round(phi / DEG)}°`], ['Codo', `${Math.round(out.elbow)}°`], ['Cable', `${Math.round(Math.atan2(c.y, Math.hypot(c.x, c.z)) / DEG)}° sobre la horizontal`],
+      if (JALON(ex)) out.align = jalonAlign(ex, pose, bar, auth, F.bar, P, pulleyAt(ex, 0, 0), fineAt(ex, prm, s).muneca * DEG);   // R4 y criterios de robust.js: frente a la acción en este mismo s
+      out.readout = [['Tronco', `${Math.round(chestTilt(pose) / DEG)}°`], ['Codo', `${Math.round(out.elbow)}°`], ['Cable', `${Math.round(Math.atan2(c.y, Math.hypot(c.x, c.z)) / DEG)}° sobre la horizontal`],
         ['Polea', `${Math.round(P.y * 100)} cm del suelo`]];
       out.phase = `codo ${Math.round(out.elbow)}°`;
       out.dem = demand(pose, ex, out); out.act = out.dem.act;
@@ -1112,6 +1441,18 @@ function evaluateInner(ex, s) {
     if (cm(hy) || cm(hz)) out.readout.push(['Cadera', `${cm(hy) ? `${cm(hy)} cm más ${hy > 0 ? 'alta' : 'baja'}` : ''}${cm(hy) && cm(hz) ? ' y ' : ''}${cm(hz) ? `${cm(hz)} cm más ${hz > 0 ? 'adelante' : 'atrás'}` : ''} que la autorada`]);
     out.phase = `muslo ${Math.round(betaH / DEG)}°`;
     if (row) { out.readout.splice(1, 0, ['Codo', `${Math.round(out.elbow)}°`]); out.phase = `codo ${Math.round(out.elbow)}°`; }
+  } else if (SOBRE_LIBRE.includes(exd.base)) {
+    // LIBRE (X03-02): la pose autorada tal cual, con la altura del cliente y nada más (sin STRETCH por segmento: con otro fémur los pies
+    // deslizarían o atravesarían el suelo y aquí no hay quien lo corrija). Todo el mundo (cuerpo, barra, banco) se escala por K() desde el
+    // origen, así los pies siguen en el suelo. Sin equilibrio ni ajustes; `flat` hace que applyPose tampoco estire los huesos.
+    const k = kk, Pa = libreAt(ex, s, bf.height);
+    Object.assign(pose, Pa); out.flat = true;
+    if (F.bar) out.bar = { center: F.bar.clone().multiplyScalar(k), axis: F.barAxis.clone() };
+    out.props = (POSES.exercises[ex].meta.props || []).map(([c, z]) => [V(...c).multiplyScalar(k), V(...z).multiplyScalar(k)]);   // cajas fijas [centro, tamaño] (banco, cajón)
+    const meta = POSES.exercises[ex].meta, ev = { floor: evalFloor, split: evalSplit, bench: evalBench }[exd.base];
+    if (ev) withBody({ ...DEFAULT_BODY, height: bf.height }, () => ev(ex, s, out, clonePose(Pa), prm, bf.dorsi));   // X03-07: los ajustes como diferencias sobre la pose de libre
+    if (!F.bar && meta.carga === 'manos' && prm.load > 0) { out.impl = 'mancuernas_lado'; out.grips = ['L', 'R'].map(S => gripOf(pose, S)); }   // sin barra y con carga en las manos: las mancuernas del visor
+    out.path = midOf(pose, 'DEF-ARM01.L', 'DEF-ARM01.R'); out.mid = null; out.phase = 'la animación de Blender';
   } else if (exd.base === 'hang') {
     // DOMINADA (tipo `hang`): el cuerpo cuelga de las manos.
     //  1) la pose autorada con las medidas actuales;
@@ -1217,8 +1558,132 @@ function evaluateInner(ex, s) {
     out.readout = [['Rodilla', `${Math.round(kn / DEG)}°`], ['Recorrido total', `${Math.round(T.length() * (prm.depth + prm.startOff / 100 / T.length()) * legR * 100)} cm`]];
     out.phase = `rodilla ${Math.round(kn / DEG)}°`;
   }
-  out.dem = demand(pose, ex, out); out.act = out.dem.act;
+  out.dem = demand(pose, ex, out); out.act = out.dem ? out.dem.act : {};
   return out;
+}
+
+/* ---------------- Bases sobre `libre`: floor, split y bench (X03-07) ---------------- */
+// Cada una parte de la pose de `libre` (la animación de Blender escalada por la altura, sin estirar huesos) y aplica sus ajustes como DIFERENCIAS:
+// con todo en su valor por defecto no toca nada (0,0 mm). Se llaman con el cuerpo `{ ...DEFAULT_BODY, height }` (sin STRETCH por segmento) y reciben
+// `out.pose` (a modificar) y `A`, una copia de la pose de partida. Piezas: solveLimb + fkSub (`limbTo`), poleOf y el avance del gesto `avance`.
+const SOBRE_LIBRE = ['libre', 'floor', 'split', 'bench'];
+function libreAt(ex, s, height) {   // la pose de `libre` en s (también fuera del frame actual)
+  const k = height / 180, Pa = withBody({ ...DEFAULT_BODY, height }, () => authoredPose(ex, s)), T = Pa['DEF-HIPS'].p.clone().multiplyScalar(k - 1);
+  for (const n of BN) Pa[n].p.add(T);
+  return Pa;
+}
+// avance del gesto w(s): 0 en la clave de inicio y 1 en la de final, medido con el punto que se mueve (`pt`) proyectado sobre la recta entre sus dos extremos
+const AVANCE = {};
+const avance = (ex, pt, A) => { const e = AVANCE[ex] ??= [0, 1].map(s => pt(libreAt(ex, s, 180))), d = e[1].clone().sub(e[0]), l2 = d.lengthSq();
+  return l2 < 1e-8 ? 0 : clamp(pt(A).divideScalar(K()).sub(e[0]).dot(d) / l2); };
+const LIMB = { leg: ['THIGH01', 'THIGH02', 'SHIN01', 'SHIN02', 'FOOT'], arm: ['ARM01', 'ARM02', 'FORARM01', 'FORARM0', 'HAND'] };
+// pierna o brazo S de P hasta `target` con las longitudes de A (rígidas); el pie o la mano conservan su giro de mundo
+function limbTo(P, A, kind, S, target, pole) {
+  const n = LIMB[kind].map(x => `DEF-${x}.${S}`), ik = solveLimb(P, A, n, target, pole ?? poleOf(A[n[0]].p, A[n[2]].p, A[n[4]].p), [A[n[0]].p.distanceTo(A[n[2]].p), A[n[2]].p.distanceTo(A[n[4]].p)]);
+  fkSub(P, kind === 'leg' ? n[0] : `DEF-SHOULDER.${S}`);
+  return ik;
+}
+const LADO = { L: 1, R: -1 };
+const aviso = (out, ik, que) => { if (ik.miss > 0.01) out.warns.push(`${que} no llega (${Math.round(ik.miss * 100)} cm)`); };
+const bisec = (g, lo, hi) => { if (g(lo) >= 0) return lo; if (g(hi) <= 0) return hi; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (g(m) > 0) hi = m; else lo = m; } return (lo + hi) / 2; };   // g creciente
+
+// FLOOR · flexiones. Manos y pies fijos en el suelo; el cuerpo es una tabla rígida que gira alrededor de las puntas de los pies.
+const FLOOR_TOP = {};
+function evalFloor(ex, s, out, A, prm) {
+  const hs = prm.hands / 100, hp = prm.handPos / 100, rot = prm.handRot * DEG, push = prm.push / 100;
+  if (hs === 1 && !hp && !rot && !push) return;
+  const P = out.pose, shM = Q => midOf(Q, 'DEF-ARM01.L', 'DEF-ARM01.R'), toeM = Q => midOf(Q, 'DEF-TOE.L', 'DEF-TOE.R'), th = Q => { const v = shM(Q).sub(toeM(Q)); return Math.atan2(v.y, v.z); };
+  // ángulo de la tabla con el suelo arriba (t0) y abajo (t1); el de abajo no cambia. El de arriba sube o baja D0 para que el brazo quede igual de estirado
+  // con las manos donde se piden (más abiertas o más lejos, el cuerpo queda más bajo)
+  const key = `${ex}|${state.body.height}|${prm.hands}|${prm.handPos}`;
+  const T0 = FLOOR_TOP[key] ??= (() => { const A0 = libreAt(ex, 0, state.body.height), A1 = libreAt(ex, 1, state.body.height), sh = A0['DEF-ARM01.L'].p, h = A0['DEF-HAND.L'].p,
+    O = toeM(A0), W = h.clone(), d0 = sh.distanceTo(h); W.x *= hs; W.z -= hp;
+    return { t0: th(A0), t1: th(A1), D0: hs === 1 && !hp ? 0 : bisec(D => sh.clone().sub(O).applyQuaternion(QA(X, -D)).add(O).distanceTo(W) - d0, th(A1) - th(A0), 25 * DEG) }; })();   // abajo del todo (la tabla del final) es lo más bajo que puede llegar
+  const dt = T0.t0 - T0.t1, Dl = Math.abs(dt) < 1e-4 ? 0 : T0.D0 * (th(A) - T0.t1) / dt;   // lo que sube el cuerpo ahora
+  const R = QA(X, -Dl), O = toeM(A);
+  if (Dl) for (const n of BN) { P[n].p = P[n].p.clone().sub(O).applyQuaternion(R).add(O); P[n].q = R.clone().multiply(P[n].q); }
+  for (const S of ['L', 'R']) P[`DEF-TOE.${S}`].q = A[`DEF-TOE.${S}`].q.clone();   // la punta sigue plana en el suelo
+  if (push) {   // los pies ruedan sobre las puntas (hasta 80°): el tobillo avanza push·w y el cuerpo se traslada con él; luego gira alrededor del tobillo para que los hombros no bajen
+    const w = avance(ex, shM, A), a = ['L', 'R'].map(S => P[`DEF-FOOT.${S}`].p.clone().sub(P[`DEF-TOE.${S}`].p)).reduce((x, y) => x.add(y)).multiplyScalar(0.5),
+      rho = Math.hypot(a.y, a.z), al = Math.atan2(a.z, a.y), al2 = Math.asin(clamp((a.z + push * w) / rho, -1, Math.sin(80 * DEG))), T = V(0, rho * Math.cos(al2) - a.y, rho * Math.sin(al2) - a.z);
+    for (const n of BN) if (!/-TOE\./.test(n)) P[n].p.add(T);
+    const An = midOf(P, 'DEF-FOOT.L', 'DEF-FOOT.R'), r = shM(P).sub(An), Rp = QA(X, -(Math.asin(clamp((r.y - T.y) / Math.hypot(r.y, r.z), -1, 1)) - Math.atan2(r.y, r.z)));   // r.y − T.y: la altura que tenían los hombros
+    for (const n of BN) if (!/-TOE\./.test(n)) { P[n].p = P[n].p.clone().sub(An).applyQuaternion(Rp).add(An); if (!/-FOOT\./.test(n)) P[n].q = Rp.clone().multiply(P[n].q); }
+    for (const S of ['L', 'R']) P[`DEF-FOOT.${S}`].q = QA(X, al2 - al).multiply(P[`DEF-FOOT.${S}`].q);
+  }
+  for (const S of ['L', 'R']) {   // brazos a las manos nuevas; la mano conserva su giro (más handRot, alrededor de la vertical)
+    const g = LADO[S], h = A[`DEF-HAND.${S}`].p, W = h.clone(), dq = QA(Y, g * rot);
+    W.x *= hs; W.z -= hp;
+    for (const c of subtree(`DEF-HAND.${S}`)) P[c].q = dq.clone().multiply(A[c].q);
+    const pole = poleOf(A[`DEF-ARM01.${S}`].p, A[`DEF-FORARM01.${S}`].p, h).applyQuaternion(R);
+    if (rot) pole.applyAxisAngle(P[`DEF-ARM01.${S}`].p.clone().sub(W).normalize(), g * 0.7 * rot);   // + = codos más pegados
+    aviso(out, limbTo(P, A, 'arm', S, W, pole), `La mano ${S === 'L' ? 'izquierda' : 'derecha'}`);
+  }
+}
+
+// SPLIT · sentadilla búlgara. Pie de delante plantado; el de atrás, en el banco. La pelvis sigue a la rodilla de delante (dorsiflexión).
+function evalSplit(ex, s, out, A, prm, dorsi) {
+  const st = prm.stride / 100, bh = prm.benchH / 100, tr = prm.trunk * DEG, sx = prm.stance / 100, dd = (dorsi - 35) * DEG;
+  if (!st && !bh && !tr && sx === 1 && !dd) return;
+  const P = out.pose, F = A['DEF-FOOT.L'].p.z >= A['DEF-FOOT.R'].p.z ? 'L' : 'R', B = F === 'L' ? 'R' : 'L', hipM = Q => midOf(Q, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), w = avance(ex, hipM, A);
+  // dorsiflexión: la tibia de delante gira (dorsi − 35)·w alrededor del tobillo (sin pasar de dorsi); el muslo conserva su orientación,
+  // así que la pelvis, el tronco y los brazos se trasladan lo que se mueve la rodilla
+  const v = A[`DEF-SHIN01.${F}`].p.clone().sub(A[`DEF-FOOT.${F}`].p);
+  let dl = dd * w; if (dl > 0) dl = Math.min(dl, Math.max(0, dorsi * DEG - Math.atan2(v.z, v.y)));
+  const T = v.clone().applyQuaternion(QA(X, dl)).sub(v);
+  for (const n of BN) P[n].p.add(T);
+  if (tr) {   // el tronco gira alrededor de la cadera; los brazos cuelgan (se trasladan con los hombros sin girar)
+    const R = QA(X, tr), H = hipM(P);
+    for (const n of subtree('DEF-SPINE01')) { P[n].p = P[n].p.clone().sub(H).applyQuaternion(R).add(H); P[n].q = R.clone().multiply(P[n].q); }
+    for (const S of ['L', 'R']) { const a = `DEF-ARM01.${S}`, d = P[a].p.clone().sub(A[a].p); for (const c of subtree(a)) { P[c].p = A[c].p.clone().add(d); P[c].q = A[c].q.clone(); } }
+  }
+  const tg = {}; for (const S of ['L', 'R']) { tg[S] = A[`DEF-FOOT.${S}`].p.clone(); if (S === B) tg[S].add(V(0, bh, -st)); tg[S].x *= sx; }   // tobillos: el de delante no se mueve; el de atrás sigue al banco
+  // si una pierna no llega (zancada larga, banco bajo: la pelvis de arriba queda alta), todo el cuerpo baja lo justo para que llegue
+  let down = 0;
+  for (let i = 0; i < 8; i++) {
+    const m = Math.max(...['L', 'R'].map(S => { const v = P[`DEF-THIGH01.${S}`].p.clone().sub(tg[S]).sub(V(0, down, 0)), l = A[`DEF-THIGH01.${S}`].p.distanceTo(A[`DEF-SHIN01.${S}`].p) + A[`DEF-SHIN01.${S}`].p.distanceTo(A[`DEF-FOOT.${S}`].p), q = v.length() - 0.999 * l;
+      return q <= 0 ? 0 : q / Math.max(0.3, v.y / v.length()); }));
+    if (!m) break; down += m;
+  }
+  if (down) for (const n of BN) P[n].p.y -= down;
+  for (const S of ['L', 'R']) aviso(out, limbTo(P, A, 'leg', S, tg[S]), `La pierna de ${S === F ? 'delante' : 'atrás'}`);
+  if (out.props[0]) { const [c, z] = out.props[0]; out.props[0] = [V(c.x, c.y + bh / 2, c.z - st), V(z.x, z.y + bh, z.z)]; }   // el banco se aleja con el tobillo y sube con su altura
+}
+
+// BENCH · press de banca (carga en las manos) y hip thrust (carga en la cadera). Tronco o escápulas fijos en el banco, pies en el suelo.
+const BENCH_TOP = {};
+function evalBench(ex, s, out, A, prm) {
+  const P = out.pose, sx = prm.stance / 100, press = CARGA(ex, 'manos'), hipM = Q => midOf(Q, 'DEF-THIGH01.L', 'DEF-THIGH01.R'), shM = Q => midOf(Q, 'DEF-ARM01.L', 'DEF-ARM01.R');
+  const legs = dz => { for (const S of ['L', 'R']) { const t = A[`DEF-FOOT.${S}`].p.clone(); t.x *= sx; t.z += dz; aviso(out, limbTo(P, A, 'leg', S, t), `La pierna ${S === 'L' ? 'izquierda' : 'derecha'}`); } };
+  if (press) {
+    const g = prm.grip / 100, tc = prm.touch / 100, el = prm.elbows * DEG;
+    if (g === 1 && !tc && !el && sx === 1) return;
+    // arriba la barra sube o baja (dy) para que el brazo quede igual de estirado con el agarre nuevo; abajo toca el pecho donde toca (más `touch` a lo largo del tronco)
+    const key = `${ex}|${state.body.height}|${prm.grip}`;
+    const dy = BENCH_TOP[key] ??= (() => { const A0 = libreAt(ex, 0, state.body.height), sh = A0['DEF-ARM01.L'].p, h = A0['DEF-HAND.L'].p, d0 = sh.distanceTo(h);
+      return g === 1 ? 0 : bisec(d => V(h.x * g, h.y + d, h.z).distanceTo(sh) - d0, -0.4, 0.2); })();
+    const w = avance(ex, Q => midOf(Q, 'DEF-HAND.L', 'DEF-HAND.R'), A), D = V(0, dy * (1 - w), 0).addScaledVector(hipM(A).sub(shM(A)).normalize(), tc * w);
+    for (const S of ['L', 'R']) {
+      const h = A[`DEF-HAND.${S}`].p, W = h.clone(), pole = poleOf(A[`DEF-ARM01.${S}`].p, A[`DEF-FORARM01.${S}`].p, h);
+      W.x *= g; W.add(D);
+      if (el) pole.applyAxisAngle(W.clone().sub(P[`DEF-ARM01.${S}`].p).normalize(), LADO[S] * el);   // + = codos más abiertos
+      aviso(out, limbTo(P, A, 'arm', S, W, pole), `La mano ${S === 'L' ? 'izquierda' : 'derecha'}`);
+    }
+    if (out.bar) out.bar.center.add(D);
+    if (sx !== 1) legs(0);
+    return;
+  }
+  // hip thrust: los hombros (escápulas) son el pivote y suben o bajan con el banco (b); la cadera sube b·w (al empezar sigue en el suelo): el cuerpo gira alrededor de los hombros
+  const b = prm.benchH / 100, f = prm.feet / 100;
+  if (!b && !f && sx === 1) return;
+  const w = avance(ex, hipM, A), S1 = shM(A).add(V(0, b, 0)), H0 = hipM(A), r0 = H0.clone().sub(S1.clone().sub(V(0, b, 0))), rho = Math.hypot(r0.y, r0.z);
+  const a0 = Math.atan2(r0.y, r0.z), a1 = Math.asin(clamp((r0.y + b * w - b) / rho, -1, 1)), Rr = QA(X, -(a1 - a0));   // la cadera acaba en H0.y + b·w
+  const xf = p => p.clone().add(V(0, b, 0)).sub(S1).applyQuaternion(Rr).add(S1);
+  for (const n of BN) { P[n].p = xf(P[n].p); P[n].q = Rr.clone().multiply(P[n].q); }
+  for (const S of ['L', 'R']) for (const n of ['FOOT', 'TOE']) P[`DEF-${n}.${S}`].q = A[`DEF-${n}.${S}`].q.clone();   // los pies siguen planos en el suelo
+  if (out.bar) out.bar.center.copy(xf(out.bar.center));
+  legs(f);
+  if (out.props[0]) { const [c, z] = out.props[0]; out.props[0] = [V(c.x, c.y + b / 2, c.z), V(z.x, z.y + b, z.z)]; }
 }
 
 /* ================= Three.js ================= */
@@ -1332,12 +1797,19 @@ const plateMesh = withOutline(new THREE.BoxGeometry(0.62, 0.5, 0.04), toon(0x2b2
 const seatMesh = withOutline(new THREE.BoxGeometry(0.42, 0.08, 0.42), padMat), backMesh = withOutline(new THREE.BoxGeometry(0.42, 0.75, 0.08), padMat);
 const handleMeshes = [0, 1].map(() => { const h = withOutline(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 12), toon(0x9aa2ae)); h.rotation.x = Math.PI / 2; return h; });
 press.add(seatMesh, backMesh, ...handleMeshes);
+// acciones `libre` (X03-02): cajas fijas de la acción (banco, cajón…), [centro, tamaño] ya escalados por K()
+const fixedBoxes = [];
+function placeBoxes(list) {
+  while (fixedBoxes.length < list.length) { const b = withOutline(new THREE.BoxGeometry(1, 1, 1), padMat); scene.add(b); fixedBoxes.push(b); }
+  fixedBoxes.forEach((b, i) => { b.visible = !!list[i]; if (list[i]) { b.position.copy(list[i][0]); b.scale.copy(list[i][1]); } });
+}
 // polea (remo en polea): columna con la polea, cable, asiento bajo la pelvis, plataforma bajo los pies y el maneral (triángulo,
 // barra recta o cuerda). Los tramos son cilindros de alto 1 que se colocan entre dos puntos (strut)
 const cableG = new THREE.Group(); scene.add(cableG);
 const cyl = (r, mat) => withOutline(new THREE.CylinderGeometry(r, r, 1, 12), mat);
 const strut = (m, a, b) => { const d = b.clone().sub(a); m.position.copy(a).addScaledVector(d, 0.5); m.scale.set(1, Math.max(d.length(), 1e-4), 1); m.quaternion.setFromUnitVectors(Y, d.normalize()); };
-const CBL = { column: withOutline(new THREE.BoxGeometry(0.12, 1, 0.12), boxMat), wheel: withOutline(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 20), ironMat),
+const colMat = toon(0x5a6170);   // propio de la columna: se vuelve translúcida de frente (X03-27)
+const CBL = { column: withOutline(new THREE.BoxGeometry(0.12, 1, 0.12), colMat), wheel: withOutline(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 20), ironMat),
   cable: cyl(0.004, toon(0x1d2027)), seat: withOutline(new THREE.BoxGeometry(0.36, 1, 0.42), padMat), foot: withOutline(new THREE.BoxGeometry(0.5, 0.32, 0.04), toon(0x2b2f37)),
   bar: cyl(0.014, steelMat), grips: [0, 1].map(() => cyl(0.016, steelMat)), arms: [0, 1].map(() => cyl(0.012, steelMat)), ropes: [0, 1].map(() => cyl(0.012, toon(0x1d2027))) };
 CBL.wheel.rotation.z = Math.PI / 2;
@@ -1446,17 +1918,24 @@ function drawLayers(dem, prm, P) {
       arrow3(LAYER.res, tail, res.d, len); actionLine(LAYER.res, res.p, res.d, 1.2); if (state.lyNum) label(`${Math.round(prm.load)} % PC`, tail, '#7a3ff2'); }
     // apoyo: una flecha por cada fuerza de apoyo (sale del punto de apoyo) y la línea de acción de su resultante
     if (state.lySup) { const ap = dem.forces.filter(f => f.tipo === 'apoyo' && f.f.length() > 1e-4);
-      for (const f of ap) arrow3(LAYER.sup, f.p, f.f.clone().normalize(), clamp(0.35 * f.f.length(), 0.12, 0.6));
+      const dicho = new Set();   // una sola etiqueta si los dos lados dicen lo mismo
+      for (const f of ap) { const d = f.f.clone().normalize(), len = clamp(0.35 * f.f.length(), 0.12, 0.6); arrow3(LAYER.sup, f.p, d, len);
+        // con «Cifras» (X03-21): el ángulo con la vertical y hacia dónde (el nombre del otro grupo); menos de 3°, nada
+        const ang = Math.atan2(Math.hypot(f.f.x, f.f.z), f.f.y) / DEG; const t = `${Math.round(ang)}° ${f.hacia}`; if (state.lyNum && f.hacia && ang >= 3 && !dicho.has(t)) { dicho.add(t); label(t, f.p.clone().addScaledVector(d, len), '#1f9d55'); } }
       const r = resultant(ap); if (r) actionLine(LAYER.sup, r.p, r.d, 1.2); }
     // brazos: bolita en la articulación y segmento grueso hasta la línea de fuerza (los centímetros, solo con «Cifras»). Con una articulación elegida,
     // solo la suya, su arco de ángulo (X03-18) y su línea de fuerza efectiva (la de la resultante de su lado, contra la que se mide ese brazo)
     if (state.lyArm) { const lab = {};
       for (const j of dem.joints) { const [id, S] = j.id.split('.');
-        if (state.joint ? id !== state.joint : !relevant(id)) continue;
+        if (state.joint ? id !== state.joint : !principal(id)) continue;   // sin articulación elegida: solo las de los músculos principales
         if (state.joint) arco(LAYER.arm, j.J, ...ARCOS[id](P, S));
-        if (!j.q) continue;
-        ball3(LAYER.arm, j.J, 0.016); bar3(LAYER.arm, j.J, j.q, 0.007); (lab[id] ??= []).push(j);
-        if (state.joint) actionLine(LAYER.arm, j.q, j.Fr.clone().normalize(), 0.8); }
+        const q = j.qL || j.q; if (!q) continue;   // contra la línea de la carga; sin carga en ese lado, contra la resultante
+        ball3(LAYER.arm, j.J, 0.016); bar3(LAYER.arm, j.J, q, 0.007); (lab[id] ??= []).push({ ...j, q, arm: j.armL ?? j.arm });
+        // la línea contra la que se mide (X03-29): de donde nace la fuerza (el pie en el hip thrust, la mano en el jalón) hasta pasado el pie del brazo;
+        // así el brazo toca una línea que se ve, no una que flota. Verde si la fuerza es de un apoyo, morada si es la carga
+        { const d = (j.qL ? j.FL : j.Fr).clone().normalize(), pts = (j.qL ? j.ptsL : j.pts) || [], ts = [0, ...pts.map(p => p.clone().sub(q).dot(d))];
+          bar3(j.qL ? (j.deCarga ? LAYER.res : LAYER.sup) : LAYER.res, q.clone().addScaledVector(d, Math.min(...ts) - 0.06), q.clone().addScaledVector(d, Math.max(...ts) + 0.06), 0.0035); }
+        if (state.joint) actionLine(LAYER.arm, q, (j.qL ? j.FL : j.Fr).clone().normalize(), 0.8); }
       // una sola etiqueta por articulación si sus dos lados difieren menos de 1 cm
       if (state.lyNum) for (const js of Object.values(lab)) { js.sort((a, b) => b.arm - a.arm);
         js.forEach((j, i) => { if (i === 0 || js[0].arm - j.arm >= 0.01) label(`${Math.round(j.arm * 100)} cm`, j.J.clone().lerp(j.q, 0.5), ''); }); } }
@@ -1465,7 +1944,7 @@ function drawLayers(dem, prm, P) {
 }
 
 function placeProps(ex, r) {
-  const F = r.F; barG.visible = !!r.bar; press.visible = !r.bar;
+  const F = r.F, libre = SOBRE_LIBRE.includes(EXERCISES[ex].base); barG.visible = !!r.bar; press.visible = !r.bar && !libre; placeBoxes(r.props || []);
   cableG.visible = EXERCISES[ex].base === 'cable' && !!r.pulley; if (cableG.visible) placeCable(ex, r);
   const hp = EXERCISES[ex].base === 'hinge' ? state.per[ex] : { plates: 0, feet: 0 };
   blocks.forEach((b, i) => { b.visible = hp.plates > 0; if (!b.visible) return;
@@ -1481,10 +1960,10 @@ function placeProps(ex, r) {
     parallels.children.forEach(c => { if (c.userData.cross) { c.position.set(0, g[0].y, g[0].z + HORN / 2); c.scale.set(1, 2 * half + 0.16, 1); }
       else c.position.set(c.userData.x * half, g[0].y, g[0].z); }); }
   const I = IMPL[impl];
-  dumbbells.forEach((g, i) => { g.visible = isDb; if (isDb) { g.position.copy(r.grips[i]); g.quaternion.setFromUnitVectors(X, handleAxis(I, i ? -1 : 1, r.bar.axis).normalize()); } });
+  dumbbells.forEach((g, i) => { g.visible = isDb; if (isDb) { g.position.copy(r.grips[i]); g.quaternion.setFromUnitVectors(X, handleAxis(I, i ? -1 : 1, r.bar?.axis).normalize()); } });
   kettlebells.forEach((g, i) => { g.visible = !!I.kb && (i === 0 || impl === 'kettlebells'); if (!g.visible) return;
     if (impl === 'kettlebell') g.position.copy(r.grips[0]).add(r.grips[1]).multiplyScalar(0.5); else g.position.copy(r.grips[i]);
-    g.quaternion.setFromUnitVectors(X, handleAxis(I, i ? -1 : 1, r.bar.axis).normalize()); });
+    g.quaternion.setFromUnitVectors(X, handleAxis(I, i ? -1 : 1, r.bar?.axis).normalize()); });
   if (r.bar) {
     barG.position.copy(r.bar.center); barG.quaternion.setFromUnitVectors(X, r.bar.axis);
     const th = 0.02 + 0.13 * PRM().load / 200;
@@ -1493,7 +1972,7 @@ function placeProps(ex, r) {
     const al = Math.abs(camera.position.clone().sub(r.bar.center).normalize().dot(r.bar.axis));
     const fade = clamp((al - 0.8) / 0.15);
     plates.forEach(p => { const [body, ol] = p.children[0].children; if (body.material.transparent !== fade > 0) { body.material.transparent = fade > 0; body.material.needsUpdate = true; } body.material.opacity = 1 - 0.75 * fade; body.material.depthWrite = fade < 0.5; ol.visible = fade < 0.5; });
-  } else {
+  } else if (!libre) {
     const n = r.plateFrame.normal, up = r.plateFrame.up;
     plateMesh.position.copy(r.plate).addScaledVector(n, -0.02);
     plateMesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(up.clone().cross(n).normalize(), up, n));
@@ -1530,10 +2009,10 @@ function initRig(gltf) {
   MU.uPelvis.value.copy(R('DEF-HIPS')); MU.uChest.value.copy(R('DEF-CHEST'));
   MU.uShoulder.value.copy(R('DEF-ARM01.L')); MU.uElbow.value.copy(R('DEF-FORARM01.L')); MU.uWrist.value.copy(R('DEF-HAND.L'));
 }
-let POSE_OVERRIDE = null;
-function applyPose(pose) {
+let POSE_OVERRIDE = null, CAM_HOLD = null;   // CAM_HOLD: para las capturas (tests), la cámara mira ahí en vez de al sitio de siempre
+function applyPose(pose, flat) {
   const k = K(), sc = new THREE.Vector3();
-  for (const n of BN) { const b = RIG.bones[n]; if (!b) continue; sc.set(k, k * STRETCH(n), k); b.matrixWorld.compose(pose[n].p, pose[n].q, sc); }
+  for (const n of BN) { const b = RIG.bones[n]; if (!b) continue; sc.set(k, k * (flat ? 1 : STRETCH(n)), k); b.matrixWorld.compose(pose[n].p, pose[n].q, sc); }
 }
 
 /* ---- tema ---- */
@@ -1562,30 +2041,208 @@ function setView(name) { viewBtns.forEach(b => b.setAttribute('aria-pressed', St
 viewBtns.forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
 
 /* ---- interfaz ---- */
-function slider(host, { id, label, min, max, step, get, set, fmt }) {
+function slider(host, { id, label, min, max, step, get, set, fmt, onInput }) {
   const w = document.createElement('div'); w.className = 'field';
   w.innerHTML = `<div class="top"><label for="${id}">${label}</label><output id="${id}-o"></output></div><input type="range" id="${id}" min="${min}" max="${max}" step="${step}">`;
   host.appendChild(w); const inp = w.querySelector('input'), out = w.querySelector('output');
   const sync = () => { inp.value = get(); out.textContent = fmt(get()); };
-  inp.addEventListener('input', () => { set(+inp.value); out.textContent = fmt(+inp.value); changed(); }); sync(); return sync;
+  inp.addEventListener('input', () => { set(+inp.value); out.textContent = fmt(+inp.value); changed(); onInput?.(); }); sync(); sync.inp = inp; return sync;
 }
+let finNote = null;
 const exHost = document.getElementById('exFields'), bodyHost = document.getElementById('bodyFields');
-function buildExerciseUI() {
+function buildExerciseUI(keepView) {   // keepView: no toca la cámara (al cambiar de agarre o de dónde se afina)
   const ex = EX(); document.querySelector('h1').textContent = ex.name; exHost.innerHTML = ''; state.joint = null;
-  for (const p of PARAMS[ex.base]) {
-    if (p.hide?.(state.exId)) continue;   // no aplica a este ejercicio (p. ej. el maneral en el remo a un brazo)
-    if (!p.options) { slider(exHost, { ...p, id: `p-${p.id}`, get: () => PRM()[p.id], set: v => { PRM()[p.id] = v; } }); continue; }
+  for (const p of PSET(state.exId)) {
+    const ver = edOn(state.exId) && !p.hide?.(state.exId);   // en el editor, los ajustes que el usuario ha ocultado se siguen viendo (atenuados) para poder volver a mostrarlos
+    if (phide(state.exId, p) && !ver) continue;   // no aplica a este ejercicio (p. ej. el maneral en el remo a un brazo)
+    if (!p.options) { const [min, max] = prange(state.exId, p), sy = slider(exHost, { ...p, min, max, id: `p-${p.id}`, get: () => PRM()[p.id], set: v => { PRM()[p.id] = v; } }); if (ver) edTools(sy, p); continue; }
     const w = document.createElement('div'); w.className = 'field';
     w.innerHTML = `<div class="top"><label>${p.label}</label></div><div class="seg" role="group" aria-label="${p.label}"></div>`;
     const segEl = w.querySelector('.seg'); segEl.style.flexWrap = 'wrap';   // con muchas opciones, en varias líneas
     for (const [v, l] of p.options.filter(([v]) => !p.allow?.(state.exId) || p.allow(state.exId).includes(v))) { const b = document.createElement('button'); b.textContent = l; b.setAttribute('aria-pressed', String(PRM()[p.id] === v));
-      b.addEventListener('click', () => { PRM()[p.id] = v; segEl.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); changed(); }); segEl.appendChild(b); }
+      b.addEventListener('click', () => { if (p.id === 'gripType' && JALON(state.exId)) setGrip(state.exId, v); else PRM()[p.id] = v; segEl.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); changed(); if (p.id === 'gripType' && JALON(state.exId)) buildExerciseUI(true); }); segEl.appendChild(b); }   // jalón: otro agarre, otra acción y otros rangos
     exHost.appendChild(w);
   }
+  finNote = document.createElement('div'); finNote.className = 'chip warn'; finNote.hidden = true; finNote.textContent = 'El recorrido acaba antes: a partir de aquí el antebrazo deja la línea del cable'; exHost.appendChild(finNote);   // R4 (X03-26)
   const rb = document.createElement('button'); rb.className = 'copy'; rb.textContent = 'Volver a la pose autorada';
-  rb.addEventListener('click', () => { for (const p of PARAMS[ex.base]) PRM()[p.id] = p.def; buildExerciseUI(); }); exHost.appendChild(rb);
-  goal.r = ex.base === 'hang' ? 5.4 : ex.base === 'cable' ? 4.2 : 3.7;   // la dominada (barra a 2,3 m) se ve de más lejos
-  setView(ex.base === 'seat' ? 'press' : 'side'); changed();
+  rb.addEventListener('click', () => { for (const p of PSET(state.exId)) PRM()[p.id] = pdef(state.exId, p); buildExerciseUI(); }); exHost.appendChild(rb);
+  buildEditor();
+  if (!keepView) { goal.r = ex.base === 'hang' ? 5.4 : ex.base === 'cable' || SOBRE_LIBRE.includes(ex.base) ? 4.2 : 3.7;   // la dominada (barra a 2,3 m) se ve de más lejos
+    setView(ex.base === 'seat' ? 'press' : 'side'); }
+  changed();
+}
+/* ---- editor de afinado (X03-27; panel nuevo en X03-28): solo con ?editor en la dirección; lo sirve y guarda `npm run editor` (tools/editor.js) ----
+   Una parte cada vez (Mano, Codo, Barra en la mano, Escápulas, Tronco), un momento cada vez (inicio, mitad, final) y un contexto, que sale de los propios ajustes del entrenador:
+   todos por defecto = la base; uno solo en su mínimo o su máximo = ese extremo; cualquier otro estado = valor interpolado (solo lectura). */
+const EDITOR = /[?&]editor\b/.test(location.search);
+const afSec = document.getElementById('afinado'), afBody = document.getElementById('afBody'), afAct = document.getElementById('afAct');
+const SAVED = Object.fromEntries(Object.keys(POSES.exercises).map(a => [a, JSON.stringify(AJ[a] ?? null)]));   // lo guardado, para «Deshacer» y el aviso de cambios sin guardar
+const ed = { parte: 'mano', mom: 0, msg: '', lim: {} };   // parte y momento elegidos; msg: resultado de guardar; lim: el aviso «límite: …» de cada campo de rango
+let edSync = () => {}, edCurves = () => {};
+const GRIPS = { prono: 'Prono', supino: 'Supino', neutro: 'Neutro' }, MOMS = ['Inicio', 'Mitad', 'Final'];
+const clone = o => JSON.parse(JSON.stringify(o));
+const edOn = ex => EDITOR && afPartes(ex).length > 0;
+const edParams = act => PSET(act).filter(p => !p.options && !p.hide?.(act));   // los ajustes numéricos del ejercicio (también los que el usuario oculta: se pueden volver a mostrar)
+const edP = (act, id) => edParams(act).find(p => p.id === id);
+const num = v => String(+v.toFixed(2)).replace('.', ',');
+function edCtx(act) {   // dónde se afina: la base (todo por defecto), un extremo (uno solo a menos de un paso de su mínimo o su máximo y el resto por defecto) o nada (interpolado)
+  const off = edParams(act).filter(p => Math.abs(PRM()[p.id] - rangoOf(act, p).def) > 1e-6);
+  if (!off.length) return { kind: 'base' };
+  if (off.length === 1) { const p = off[0], r = rangoOf(act, p); for (const ext of ['min', 'max']) if (r[ext] !== r.def && Math.abs(PRM()[p.id] - r[ext]) <= p.step + 1e-9) return { kind: 'ext', id: p.id, ext }; }
+  return { kind: 'interp' };
+}
+const edLabel = (act, c) => c.kind === 'base' ? 'default' : c.kind === 'ext' ? `${edP(act, c.id).label} al ${c.ext === 'min' ? 'mínimo' : 'máximo'}`
+  : `solo lectura: ${edParams(act).filter(p => Math.abs(PRM()[p.id] - rangoOf(act, p).def) > 1e-6).map(p => p.label.toLowerCase()).join(', ')} entre default y un extremo; aquí se ve la mezcla. Lleva cada ajuste a Default, Mín o Máx para editar`;
+const edBase = (act, m, i) => AJ[act]?.base?.[m]?.[i] ?? 0;
+const edGet = (act, c, m, i) => c.kind === 'ext' ? AJ[act]?.en?.[c.id]?.[c.ext]?.[m]?.[i] ?? edBase(act, m, i) : c.kind === 'base' ? edBase(act, m, i) : fineAt(act, PRM(), i / 2)[m];
+const edRef = (act, c, m, i) => c.kind === 'ext' ? edBase(act, m, i) : 0;   // con qué se compara un valor para saber si se ha cambiado: el 0 en la base, la base en un extremo
+function edClean(act) {   // quita lo que vale lo mismo que no tener nada (ceros en la base; en un extremo, lo que vale como la base)
+  const A = AJ[act]; if (!A) return;
+  for (const m in A.base || {}) if (A.base[m].every(x => x === 0)) delete A.base[m];
+  if (A.base && !Object.keys(A.base).length) delete A.base;
+  for (const id in A.en || {}) { for (const e of ['min', 'max']) { const c = A.en[id][e]; if (!c) continue;
+      for (const m in c) if (c[m].every((x, i) => x === (A.base?.[m]?.[i] ?? 0))) delete c[m];
+      if (!Object.keys(c).length) delete A.en[id][e]; }
+    if (!Object.keys(A.en[id]).length) delete A.en[id]; }
+  if (A.en && !Object.keys(A.en).length) delete A.en;
+  if (A.rangos && !Object.keys(A.rangos).length) delete A.rangos;
+  if (!Object.keys(A).length) delete AJ[act];
+  AJ_VER++;
+}
+function edSet(act, c, m, i, v) {
+  const A = AJ[act] ??= {}, b = A.base ??= {};
+  if (c.kind === 'base') (b[m] ??= [0, 0, 0])[i] = v;
+  else { const e = ((A.en ??= {})[c.id] ??= {})[c.ext] ??= {}; e[m] ??= (b[m] ?? [0, 0, 0]).slice(); e[m][i] = v; }
+  edClean(act);
+}
+// todo lo que se ha cambiado en esta acción: valores distintos de 0 en la base, y en cada extremo los que difieren de la base
+function edChanges(act) {
+  const A = AJ[act], out = []; if (!A) return out;
+  const M = afPartes(act).flatMap(pt => pt.mags.map(m => ({ m, pt })));
+  for (const { m, pt } of M) for (let i = 0; i < 3; i++) { const v = edBase(act, m.id, i); if (v) out.push({ c: { kind: 'base' }, m, pt, i, v }); }
+  for (const [id, e] of Object.entries(A.en || {})) for (const ext of ['min', 'max']) for (const { m, pt } of M) for (let i = 0; i < 3; i++) {
+    const v = e[ext]?.[m.id]?.[i]; if (v !== undefined && v !== edBase(act, m.id, i)) out.push({ c: { kind: 'ext', id, ext }, m, pt, i, v }); }
+  return out;
+}
+const fmtV = (m, v) => `${v > 0 ? '+' : ''}${v}${m.unidad}`;
+const edLimits = (act, p) => p.lim?.(act) ?? [p.min, p.max];
+function edRango(act, p, f, v) {   // f: min | max | def | oculto. Los valores se recortan a los límites duros del código y el campo lo dice (ed.lim)
+  const lim = edLimits(act, p), code = { min: lim[0], max: lim[1], def: p.defOf ? p.defOf(act) : p.def }, old = rangoOf(act, p), A = AJ[act] ??= {}, R = (A.rangos ??= {})[p.id] ??= {};
+  if (f === 'min' || f === 'max') { if (v < lim[0] || v > lim[1]) ed.lim[p.id] = `fuera del rango probado (${num(lim[0])} a ${num(lim[1])})`; else delete ed.lim[p.id]; }   // se acepta: solo avisa
+  if (f === 'oculto') { if (v) R.oculto = true; else delete R.oculto; } else if (Math.abs(v - code[f]) < 1e-9) delete R[f]; else R[f] = v;
+  if (!Object.keys(R).length) delete A.rangos[p.id];
+  edClean(act); ed.msg = '';
+  const r = rangoOf(act, p); if (PRM()[p.id] === old.def) PRM()[p.id] = r.def; PRM()[p.id] = clamp(PRM()[p.id], r.min, r.max);
+  buildExerciseUI(true);
+}
+function edGoto(act, c, mom) {   // coloca los ajustes del entrenador en ese contexto y salta a ese momento
+  for (const q of edParams(act)) PRM()[q.id] = rangoOf(act, q).def;
+  if (c.kind === 'ext') PRM()[c.id] = rangoOf(act, edP(act, c.id))[c.ext];
+  if (mom !== undefined) { ed.mom = mom; setPlaying(false); state.s = mom / 2; }
+  buildExerciseUI(true);
+}
+const eyeSvg = off => `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>${off ? '<path d="M3 3l18 18"/>' : ''}</svg>`;
+// los controles de rango de un ajuste del entrenador en modo editor: mínimo y máximo a los lados del deslizador, ⇤ ⇥ para ir a los extremos, «def» y el ojo
+function edTools(sync, p) {
+  const act = actOf(state.exId), w = sync.inp.closest('.field'), r = rangoOf(act, p), lim = edLimits(act, p), A = AJ[act];
+  const nf = f => { const i = document.createElement('input'); i.type = 'number'; i.step = p.step; i.value = +r[f].toFixed(2); i.setAttribute('aria-label', `${p.label}: ${f === 'min' ? 'mínimo' : 'máximo'}`);
+    i.addEventListener('change', () => edRango(act, p, f, +i.value)); return i; };
+  const row = document.createElement('div'); row.className = 'edrange'; sync.inp.replaceWith(row); row.append(nf('min'), sync.inp, nf('max'));
+  const t = document.createElement('div'); t.className = 'edtools'; w.appendChild(t);
+  const b = (txt, title, fn) => { const x = document.createElement('button'); x.innerHTML = txt; x.title = title; x.setAttribute('aria-label', title); x.addEventListener('click', fn); t.appendChild(x); return x; };
+  const goExt = ext => { for (const q of edParams(act)) PRM()[q.id] = rangoOf(act, q).def; PRM()[p.id] = rangoOf(act, p)[ext]; buildExerciseUI(true); };
+  b('Default', `Volver «${p.label}» a su default (el resto no se toca)`, () => { PRM()[p.id] = rangoOf(act, p).def; buildExerciseUI(true); });
+  b('Mín', `Llevar «${p.label}» a su mínimo y el resto a default, para afinar ese extremo`, () => goExt('min'));
+  b('Máx', `Llevar «${p.label}» a su máximo y el resto a default, para afinar ese extremo`, () => goExt('max'));
+  b('Fijar default', `Que el valor actual sea el default de «${p.label}» (con el que empieza el entrenador)`, () => edRango(act, p, 'def', PRM()[p.id]));
+  const gap = document.createElement('span'); gap.className = 'gap'; t.appendChild(gap);
+  if (ed.lim[p.id]) { const l = document.createElement('span'); l.className = 'lim'; l.textContent = ed.lim[p.id]; t.insertBefore(l, gap); }
+  b(eyeSvg(r.oculto), r.oculto ? `«${p.label}» está oculto al entrenador: mostrarlo` : `Ocultar «${p.label}» al entrenador`, () => edRango(act, p, 'oculto', !r.oculto));
+  if (r.oculto) w.classList.add('oc');
+  const imp = document.createElement('p'); imp.className = 'hint edimp';
+  const n1 = v => num(Math.round(v / p.step) * p.step); imp.textContent = r.oculto ? 'El entrenador no lo ve: queda siempre en su default.' : `El entrenador lo mueve de ${n1(r.min)} a ${n1(r.max)} y empieza en ${n1(r.def)}.`; w.appendChild(imp);
+  if (A?.en?.[p.id] || A?.rangos?.[p.id]) { const d = document.createElement('i'); d.className = 'afdot'; d.title = 'tiene cambios'; w.querySelector('label').appendChild(d); }
+}
+function buildEditor() {
+  const on = edOn(state.exId); afSec.hidden = !on; afBody.innerHTML = ''; edSync = () => {}; edCurves = () => {};
+  if (!on) return;
+  const act = actOf(state.exId), partes = afPartes(act), grp = (title, cls = '') => { const g = document.createElement('div'); g.className = 'fgroup ' + cls; g.innerHTML = title ? `<h3>${title}</h3>` : ''; afBody.appendChild(g); return g; };
+  afAct.textContent = act;
+  // 1. franja «Afinando» (siempre visible) y la mano que se usa
+  const strip = document.createElement('div'); strip.className = 'afstrip'; strip.innerHTML = '<span></span><button hidden>Todo a default</button>'; afBody.appendChild(strip);
+  const [stripTxt, bBase] = strip.children; bBase.addEventListener('click', () => edGoto(act, { kind: 'base' }));
+  const mano = POSES.exercises[act].meta.mano, hint = document.createElement('p'); hint.className = 'hint';
+  hint.textContent = !mano ? '' : libraryHand(act) ? `Mano de la biblioteca: ${mano}` : `Mano de la acción: falta «${mano}» en la biblioteca`; if (hint.textContent) afBody.appendChild(hint);
+  // 2. momento
+  const gm = grp('Momento'), rm = document.createElement('div'); rm.className = 'afrow'; gm.appendChild(rm);
+  const segM = document.createElement('div'); segM.className = 'seg'; segM.setAttribute('role', 'group'); segM.setAttribute('aria-label', 'Momento'); rm.appendChild(segM);
+  const bM = MOMS.map((t, i) => { const b = document.createElement('button'); b.addEventListener('click', () => { ed.mom = i; setPlaying(false); state.s = sOfProg(act, i / 2); edSync(); }); segM.appendChild(b); return b; });
+  const hold = document.createElement('button'); hold.className = 'afhold'; hold.textContent = 'Blender'; hold.title = 'Mantén pulsado para ver la pose de la acción de Blender tal cual'; hold.setAttribute('aria-pressed', 'false'); rm.appendChild(hold);
+  const holdOff = () => { POSE_OVERRIDE = null; hold.setAttribute('aria-pressed', 'false'); };
+  hold.addEventListener('pointerdown', e => { hold.setPointerCapture?.(e.pointerId); POSE_OVERRIDE = () => withBody(DEFAULT_BODY, () => authoredPose(act, state.s)); hold.setAttribute('aria-pressed', 'true'); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) hold.addEventListener(ev, holdOff);
+  // 3. qué afino: una parte y sus magnitudes
+  const gp = grp('Qué afino'), segP = document.createElement('div'); segP.className = 'seg afseg'; segP.setAttribute('role', 'group'); segP.setAttribute('aria-label', 'Parte'); gp.appendChild(segP);
+  if (!partes.some(p => p.parte === ed.parte)) ed.parte = partes[0].parte;
+  const bP = partes.map(p => { const b = document.createElement('button'); b.addEventListener('click', () => { ed.parte = p.parte; buildMags(); edSync(); }); segP.appendChild(b); return b; });
+  const magHost = document.createElement('div'); magHost.className = 'stack'; magHost.style.marginTop = '6px'; gp.appendChild(magHost);
+  let syncs = [];
+  function buildMags() {
+    magHost.innerHTML = ''; syncs = [];
+    for (const m of partes.find(p => p.parte === ed.parte).mags) {
+      const sy = slider(magHost, { id: `af-${m.id}`, label: m.label, min: m.min, max: m.max, step: m.paso, get: () => Math.round(edGet(act, edCtx(act), m.id, ed.mom)), fmt: v => fmtV(m, v),
+        set: v => { const c = edCtx(act); if (c.kind === 'interp') return; edSet(act, c, m.id, ed.mom, v); ed.msg = ''; }, onInput: () => { setPlaying(false); state.s = sOfProg(act, ed.mom / 2); } });
+      const w = sy.inp.closest('.field'), top = w.querySelector('.top'), help = document.createElement('small'); help.className = 'afhelp'; help.textContent = m.ayuda; top.after(help);
+      const x = document.createElement('button'); x.className = 'afx'; x.textContent = '×'; x.title = `Poner «${m.label}» a 0 en este momento`; x.setAttribute('aria-label', `Quitar ${m.label}`); top.querySelector('output').after(x);
+      x.addEventListener('click', () => { const c = edCtx(act); if (c.kind === 'interp') return; edSet(act, c, m.id, ed.mom, edRef(act, c, m.id, ed.mom)); ed.msg = ''; changed(); });
+      const cv = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); cv.setAttribute('class', 'afcurve'); cv.setAttribute('viewBox', '0 0 300 44'); cv.setAttribute('preserveAspectRatio', 'none');
+      cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', `${m.label} a lo largo de la repetición`); w.appendChild(cv);
+      sy.curve = () => { const c = edCtx(act), v = [0, 1, 2].map(i => edGet(act, c, m.id, i)), span = Math.max(Math.max(...v, 0) - Math.min(...v, 0), (m.max - m.min) / 6), mid = (Math.max(...v, 0) + Math.min(...v, 0)) / 2, lo = mid - span * 0.6, hi = mid + span * 0.6, Y = x => 42 - (x - lo) / (hi - lo) * 40;   // escala a los valores puestos (con un mínimo), para que la forma se vea
+        const pts = Array.from({ length: 61 }, (_, i) => `${(i * 5).toFixed(1)},${Y(keys3(v, progAt(act, i / 60))).toFixed(1)}`).join(' ');
+        const ks = [0, 1, 2].map(i => `<circle cx="${(sOfProg(act, i / 2) * 300).toFixed(1)}" cy="${Y(v[i]).toFixed(1)}" r="${i === ed.mom ? 4 : 3}" class="${i === ed.mom ? 'on' : ''}"/>`).join('');
+        cv.innerHTML = `<line x1="0" x2="300" y1="${Y(0)}" y2="${Y(0)}" class="z"/><polyline points="${pts}"/>${ks}<line x1="${(state.s * 300).toFixed(1)}" x2="${(state.s * 300).toFixed(1)}" y1="0" y2="44" class="now"/>`; };
+      sy.m = m; sy.x = x; syncs.push(sy);
+    }
+  }
+  buildMags();
+  // 5. lo que has cambiado
+  const gc = grp('<span class="cnt"></span><span class="afstate"></span>'), list = document.createElement('div'); list.className = 'aflist'; gc.appendChild(list);
+  // 6. guardar, deshacer y copiar de otro agarre
+  const ga = grp(''), acc = document.createElement('div'); acc.className = 'afsave'; ga.appendChild(acc);
+  acc.innerHTML = '<button class="copy pri">Guardar</button><button class="copy">Deshacer</button><select aria-label="Copiar de otro agarre"></select><span class="afstate"></span>';
+  const [bSave, bUndo, sel, st] = acc.children, root = VARIANT(act) || act, ids = Object.keys(POSES.exercises).filter(id => id !== act && (id === root || VARIANT(id) === root));
+  sel.innerHTML = '<option value="">Copiar de otro agarre…</option>' + ids.map(id => `<option value="${id}">${GRIPS[POSES.exercises[id].meta.grip || 'prono'] || id}</option>`).join(''); sel.hidden = !ids.length;
+  sel.addEventListener('change', () => { if (!sel.value) return; const o = AJ[sel.value]; ajSet(act, o ? clone(o) : null); ed.msg = ''; for (const p of edParams(act)) { const r = rangoOf(act, p); PRM()[p.id] = clamp(PRM()[p.id], r.min, r.max); } buildExerciseUI(true); });
+  bSave.addEventListener('click', async () => {
+    try { const r = await fetch(`/ajustes/${act}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(AJ[act] ?? {}) }), j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `error ${r.status}`); SAVED[act] = JSON.stringify(AJ[act] ?? null); ed.msg = 'Guardado'; } catch (e) { ed.msg = `No se ha guardado: ${e.message}`; }
+    edSync(); });
+  bUndo.addEventListener('click', () => { ajSet(act, SAVED[act] === 'null' ? null : JSON.parse(SAVED[act])); ed.msg = ''; for (const p of edParams(act)) { const r = rangoOf(act, p); PRM()[p.id] = clamp(PRM()[p.id], r.min, r.max); } buildExerciseUI(true); });
+  const dot = on => on ? '<i class="afdot" title="tiene cambios"></i>' : '';
+  edCurves = () => syncs.forEach(f => f.curve());
+  edSync = () => {
+    const c = edCtx(act), ro = c.kind === 'interp', ref = ro ? { kind: 'base' } : c, A = AJ[act], dirty = JSON.stringify(A ?? null) !== SAVED[act];
+    const dif = (m, i) => edGet(act, ref, m, i) !== edRef(act, ref, m, i);   // ¿hay algo cambiado ahí, en este contexto?
+    stripTxt.textContent = `Afinando: ${GRIPS[PRM().gripType] || act} · ${edLabel(act, c)}${ro ? '' : ` · ${MOMS[ed.mom]}`}`; strip.classList.toggle('ro', ro); bBase.hidden = !ro;
+    bM.forEach((b, i) => { b.setAttribute('aria-pressed', String(i === ed.mom)); b.innerHTML = `<span>${MOMS[i]}</span>${dot(partes.some(p => p.mags.some(m => dif(m.id, i))))}`; });
+    bP.forEach((b, i) => { b.setAttribute('aria-pressed', String(partes[i].parte === ed.parte)); b.innerHTML = `<span>${partes[i].label}</span>${dot(partes[i].mags.some(m => [0, 1, 2].some(j => dif(m.id, j))))}`; });
+    syncs.forEach(f => { f.inp.disabled = ro; f(); f.curve(); f.x.hidden = ro || edGet(act, c, f.m.id, ed.mom) === edRef(act, c, f.m.id, ed.mom); });
+    // la lista: un renglón por valor cambiado (y por rango); pulsarlo lleva a ese contexto, parte y momento; la × lo quita
+    const ch = edChanges(act), rg = Object.entries(A?.rangos || {}).flatMap(([id, R]) => { const p = edP(act, id); return p ? Object.entries(R).map(([f, v]) => ({ p, f, v })) : []; });
+    gc.querySelector('.cnt').textContent = `Lo que has cambiado · ${ch.length + rg.length}`; const gs = gc.querySelector('.afstate'); gs.textContent = dirty ? 'sin guardar' : ''; gs.classList.toggle('dirty', dirty);
+    list.innerHTML = ch.length + rg.length ? '' : '<div class="c" style="cursor:default">Nada todavía: mueve un deslizador.</div>';
+    for (const e of ch) { const d = document.createElement('div'), lab = e.c.kind === 'base' ? 'Default' : `${edP(act, e.c.id)?.label || e.c.id} ${e.c.ext === 'min' ? 'mín' : 'máx'}`;
+      d.innerHTML = `<span class="c">${lab} · ${e.pt.label} · ${e.m.label} · ${MOMS[e.i].toLowerCase()}</span><span class="v">${fmtV(e.m, e.v)}</span><button class="afx" aria-label="Quitar este cambio">×</button>`;
+      d.addEventListener('click', () => { ed.parte = e.pt.parte; edGoto(act, e.c, e.i); });
+      d.querySelector('button').addEventListener('click', ev => { ev.stopPropagation(); edSet(act, e.c, e.m.id, e.i, edRef(act, e.c, e.m.id, e.i)); ed.msg = ''; changed(); });
+      list.appendChild(d); }
+    for (const { p, f, v } of rg) { const d = document.createElement('div'), txt = f === 'oculto' ? 'oculto al entrenador' : `${f === 'min' ? 'mín' : f === 'max' ? 'máx' : 'por defecto'} ${(() => { try { return p.fmt(v); } catch { return num(v); } })()}`;
+      d.innerHTML = `<span class="c">Rango · ${p.label}</span><span class="v">${txt}</span><button class="afx" aria-label="Quitar este cambio">×</button>`;
+      d.querySelector('button').addEventListener('click', () => { const lim = edLimits(act, p); edRango(act, p, f, f === 'oculto' ? false : f === 'min' ? lim[0] : f === 'max' ? lim[1] : p.defOf ? p.defOf(act) : p.def); });
+      list.appendChild(d); }
+    st.textContent = ed.msg; bUndo.disabled = !dirty;
+  };
+  edSync();
 }
 const exSeg = document.getElementById('exSeg');
 for (const [id, ex] of Object.entries(EXERCISES)) {
@@ -1627,12 +2284,16 @@ const PAPEL = {
   back_squat: { p: ['quads', 'glutes'], s: ['add', 'hams', 'erect', 'calves'] }, leg_press: { p: ['quads', 'glutes'], s: ['add', 'hams', 'calves'] },
   deadlift: { p: ['glutes', 'hams', 'quads', 'erect'], s: ['add', 'lats', 'calves'] }, romanian_deadlift: { p: ['hams', 'glutes'], s: ['erect', 'add', 'lats'] },
   barbell_row: { p: ['lats', 'delts', 'biceps'], s: ['erect', 'hams', 'glutes'] }, cable_row: { p: ['lats', 'biceps', 'delts'], s: ['erect'] }, pullup: { p: ['lats', 'biceps'], s: ['delts', 'pecs'] },
-  lat_pulldown: { p: ['lats', 'biceps'], s: ['delts', 'pecs', 'abs'] },   // X03-14, revisada con el usuario
+  lat_pulldown: { p: ['lats', 'biceps'], s: ['delts', 'pecs', 'abs'] },   // X03-14, revisadas con el usuario el 10-nov
+  bulgarian_split_squat: { p: ['quads', 'glutes'], s: ['add', 'hams', 'calves', 'erect'] }, bench_press: { p: ['pecs', 'triceps', 'delts'], s: ['lats'] },
+  hip_thrust: { p: ['glutes'], s: ['hams', 'quads', 'add'], j: ['hip', 'knee'] },   // la rodilla: su brazo decide cuádriceps o isquios (usuario, 14-nov)
+  push_up: { p: ['pecs', 'triceps', 'delts'], s: ['abs'] },
 };
 PAPEL.front_squat = PAPEL.back_squat;
 const SECUNDARIO = 0.5, PAPELX = {};
 const GRUPO = { ankle: ['calves'], knee: ['quads', 'hams'], hip: ['glutes', 'hams', 'add'], lumbar: ['erect', 'abs'], shoulder: ['lats', 'pecs', 'delts'], elbow: ['biceps', 'triceps'] };   // músculos de cada articulación
 const papelDe = ex => PAPEL[ex] || PAPEL[VARIANT(ex)] || PAPELX[ex];
+const principal = id => { const t = papelDe(state.exId); return t?.j ? t.j.includes(id) : t ? GRUPO[id].some(m => t.p.includes(m)) : relevant(id); };   // `j`: las articulaciones con brazo, si el ejercicio las fija   // articulación movida por algún músculo principal
 // lo que se pinta (mapa, barras, gráfica y barras del panel de articulaciones): principal = clamp(raw / PEAK), secundario = SECUNDARIO · eso, el resto 0
 function pinta(ex, raw, peak) {
   const t = papelDe(ex), o = {};
@@ -1651,10 +2312,11 @@ let PEAK = 1, RANGO = {}, ACC = {};
 function repPeak(ex = state.exId) {
   const curve = [], RG = {}, acc = {};
   for (let j = 0; j <= 30; j++) {
-    const s = j / 30, r = evaluate(ex, s), an = anatomia(r.pose); curve.push({ s, raw: r.dem.raw, path: r.path.clone() });
+    const s = j / 30, r = evaluate(ex, s), an = anatomia(r.pose); curve.push({ s, raw: r.dem?.raw, path: r.path.clone() });
     for (const k in an) { const g = RG[k] ??= { min: Infinity, max: -Infinity }; g.min = Math.min(g.min, an[k]); g.max = Math.max(g.max, an[k]); if (j === 0) g.ini = an[k]; if (j === 30) g.fin = an[k]; }
   }
   for (const k in RG) if (RG[k].max - RG[k].min >= 15) acc[k.split('.')[0]] = true;
+  if (!curve[0].raw) return { PEAK: 1, RANGO: RG, ACC: acc, curve };   // acción `libre` sin apoyos declarados: sin demanda
   if (!PAPEL[ex] && !PAPEL[VARIANT(ex)]) { const p = Object.keys(acc).flatMap(id => GRUPO[id]); PAPELX[ex] = { p, s: MUSCLES.map(m => m[0]).filter(m => !p.includes(m) && curve.some(c => c.raw[m] > 0)) }; }
   let peak = 0.05; for (const m of papelDe(ex).p) for (const c of curve) peak = Math.max(peak, c.raw[m]);
   return { PEAK: peak, RANGO: RG, ACC: acc, curve };
@@ -1680,7 +2342,7 @@ function jointRows(dem, dem0, pt, an) {
   }
   return rows;
 }
-const jHost = document.getElementById('joints'), jRows = [];
+const jHost = document.getElementById('joints'), jRows = [], repartoEl = document.getElementById('reparto');
 function setJointRows(rows) {
   while (jRows.length < rows.length) { const n = document.createElement('div'); n.className = 'n'; const b = document.createElement('div'); b.className = 'bar'; const i = document.createElement('i'); b.appendChild(i); const v = document.createElement('div'); v.className = 'v'; v.style.whiteSpace = 'nowrap'; jHost.append(n, b, v); const r = { n, b, i, v, id: null }; jRows.push(r);
     for (const e of [n, b, v]) e.addEventListener('click', () => { state.joint = state.joint === r.id ? null : r.id; }); }   // elegir una articulación para trazarla (X03-17)
@@ -1689,19 +2351,20 @@ function setJointRows(rows) {
 const spark = document.getElementById('spark');
 function computeCurve() {
   const R = repPeak(); PEAK = R.PEAK; RANGO = R.RANGO; ACC = R.ACC;
+  pathLine.geometry.dispose(); pathLine.geometry = new THREE.BufferGeometry().setFromPoints(R.curve.map(c => c.path));
+  if (!R.curve[0].raw) { spark.innerHTML = ''; document.getElementById('sparkLg').innerHTML = ''; return; }
   // la gráfica dibuja los dos primeros músculos principales del ejercicio (X03-19)
   const [m1, m2 = m1] = papelDe(state.exId).p, nom = m => MUSCLES.find(x => x[0] === m)[1];
   document.getElementById('sparkLg').innerHTML = `<span style="color:var(--heat-hi)">${nom(m1)}</span><span style="color:var(--accent)">${nom(m2)}</span>`;
   const curve = R.curve, pts = k => curve.map(c => `${(c.s * 300).toFixed(1)},${(72 - pinta(state.exId, c.raw, PEAK)[k] * 66).toFixed(1)}`).join(' ');
   spark.innerHTML = `<line x1="0" y1="72" x2="300" y2="72" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/><line x1="0" y1="39" x2="300" y2="39" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/><polyline points="${pts(m1)}" fill="none" stroke="var(--heat-hi)" stroke-width="2" vector-effect="non-scaling-stroke"/><polyline points="${pts(m2)}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/><line id="cursor" x1="0" y1="0" x2="0" y2="76" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".5"/>`;
-  pathLine.geometry.dispose(); pathLine.geometry = new THREE.BufferGeometry().setFromPoints(curve.map(c => c.path));
 }
 const jsonEl = document.getElementById('json');
 function renderJSON() { const r2 = v => Math.round(v * 100) / 100; jsonEl.textContent = JSON.stringify({ ejercicio: state.exId, pose: 'autorada (Blender)', ajustes: Object.fromEntries(Object.entries(PRM()).map(([k, v]) => [k, r2(v)])) }, null, 2); }
 document.getElementById('copyBtn').addEventListener('click', async e => { const btn = e.currentTarget; try { await navigator.clipboard.writeText(jsonEl.textContent); btn.textContent = 'Copiado'; } catch { const r = document.createRange(); r.selectNodeContents(jsonEl); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); btn.textContent = 'Seleccionado'; } setTimeout(() => btn.textContent = 'Copiar JSON', 1500); });
 let curveDirty = true;
 const defNote = document.getElementById('defNote');
-function changed() { curveDirty = true; renderJSON(); defNote.textContent = isDefault() ? 'pose autorada exacta' : 'corregida por el solver'; }
+function changed() { curveDirty = true; renderJSON(); edSync(); defNote.textContent = isDefault() ? 'pose autorada exacta' : 'corregida por el solver'; }
 
 /* ---- bucle ---- */
 const readout = document.getElementById('readout'), phaseLbl = document.getElementById('phaseLbl'), demandAt = document.getElementById('demandAt');
@@ -1709,31 +2372,39 @@ function resize() { const r = canvas.getBoundingClientRect(); renderer.setSize(r
 new ResizeObserver(resize).observe(canvas);
 const esc = t => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 let last = performance.now();
+let edCurveS = -1;
 function frameLoop(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (curveDirty) { curveDirty = false; computeCurve(); }
   if (state.playing) { clock += dt; state.s = repS(clock); }
   scrub.value = Math.round(state.s * 1000);
+  if (edCurveS !== state.s) { edCurveS = state.s; edCurves(); }   // la raya de «ahora» en las curvas del editor
   const r = evaluate(state.exId, state.s); window.__last = r;
-  applyPose(POSE_OVERRIDE ? POSE_OVERRIDE() : r.pose); placeProps(state.exId, r);
-  const pt = pinta(state.exId, r.dem.raw, PEAK);   // relativo al pico de la repetición y al papel de cada músculo (X03-16/19)
-  MU.uAct.value = MUSCLES.map(([m]) => pt[m]); MU.uHeat.value = state.heat ? 1 : 0; MU.uS.value = 1;
+  applyPose(POSE_OVERRIDE ? POSE_OVERRIDE() : r.pose, r.flat); placeProps(state.exId, r);
+  const pt = r.dem ? pinta(state.exId, r.dem.raw, PEAK) : null;   // relativo al pico de la repetición y al papel de cada músculo (X03-16/19); sin demanda (libre sin apoyos): mapa apagado
+  MU.uAct.value = MUSCLES.map(([m]) => pt ? pt[m] : 0); MU.uHeat.value = state.heat && pt ? 1 : 0; MU.uS.value = 1;
   midLine.visible = state.lyBal && r.mid !== null; if (r.mid !== null) midLine.position.z = r.mid; pathLine.visible = state.lyPath;
   drawLayers(r.dem, PRM(), r.pose);
   // referencia autorada
   refLines.visible = state.ref;
   if (state.ref) { const A = withBody(DEFAULT_BODY, () => authoredPose(state.exId, state.s)); const pts = []; for (const n of BN) { const P = PARENT[n]; if (P && !/FINGER|THUMB|PALM/.test(n)) pts.push(A[P].p, A[n].p); } refLines.geometry.dispose(); refLines.geometry = new THREE.BufferGeometry().setFromPoints(pts); }
-  const k = K(); target.lerp(EX().base === 'seat' ? V(0, 0.75 * k, 0.3) : EX().base === 'hang' ? V(0, 1.6 * k, 0) : EX().base === 'cable' ? V(0, 0.7 * k, 0.45) : V(0, 0.8 * k, 0.03), 0.2);
+  const k = K(); target.lerp(CAM_HOLD || (EX().base === 'seat' ? V(0, 0.75 * k, 0.3) : EX().base === 'hang' ? V(0, 1.6 * k, 0) : EX().base === 'cable' ? V(0, 0.7 * k, 0.45) : SOBRE_LIBRE.includes(EX().base) ? V(0, 0.55 * k, POSES.exercises[state.exId].start.bones['DEF-HIPS'].p[2] * k) : V(0, 0.8 * k, 0.03)), 0.2);
   orbit.th += (goal.th - orbit.th) * 0.12; orbit.ph += (goal.ph - orbit.ph) * 0.12; orbit.r += (goal.r - orbit.r) * 0.15;
   camera.position.set(target.x + orbit.r * Math.sin(orbit.ph) * Math.sin(orbit.th), target.y + orbit.r * Math.cos(orbit.ph), target.z + orbit.r * Math.sin(orbit.ph) * Math.cos(orbit.th));
   camera.lookAt(target); if (OUTLINE.base) OUTLINE.value = OUTLINE.base * clamp(orbit.r / 3.2, 0.3, 1.2);
+  { const front = Math.abs(Math.atan2(Math.sin(orbit.th), Math.cos(orbit.th))) < 31 * DEG, [cb, co] = CBL.column.children;   // de frente la columna de la polea tapa al maniquí: translúcida (opacidad 0,2) y sin contorno (X03-27)
+    if (cb.material.transparent !== front) { cb.material.transparent = front; cb.material.needsUpdate = true; } cb.material.opacity = front ? 0.2 : 1; cb.material.depthWrite = !front; co.visible = !front; }
   renderer.render(scene, camera);
+  if (finNote) finNote.hidden = r.sFin === undefined;
   readout.innerHTML = r.readout.map(([l, v]) => `<span class="chip"><b>${l}</b>${v}</span>`).join('') + r.warns.map(w => `<span class="chip warn">${esc(w)}</span>`).join('');
   phaseLbl.textContent = `${Math.round(state.s * 100)}% · ${r.phase}`; demandAt.textContent = `en el ${Math.round(state.s * 100)}%`;
-  const papel = papelDe(state.exId);   // principales primero, secundarios con el nombre en gris, el resto oculto
-  mRows.forEach((m, i) => { const v = pt[m.key], k = papel.p.includes(m.key) ? 0 : papel.s.includes(m.key) ? 1 : 2;
+  const papel = pt && papelDe(state.exId);   // principales primero, secundarios con el nombre en gris, el resto oculto
+  mRows.forEach((m, i) => { const v = pt ? pt[m.key] : 0, k = !papel ? 2 : papel.p.includes(m.key) ? 0 : papel.s.includes(m.key) ? 1 : 2;
     for (const e of [m.n, m.b, m.v]) { e.hidden = k === 2; e.style.order = k * 100 + i; } m.n.classList.toggle('sec', k === 1);
     m.i.style.width = `${(v * 100).toFixed(1)}%`; m.v.textContent = `${Math.round(v * 100)}`; });
+  repartoEl.hidden = !r.dem?.reparto;
+  if (r.dem?.reparto) { const g = r.dem.reparto, pies = g.filter(x => x.nombre.includes('pie')), m = pies.length === 1 ? pies[0] : g[0].ang >= g[1].ang ? g[0] : g[1];   // la dirección de la fuerza de los pies (X03-21) o, entre dos pies, la más inclinada
+    repartoEl.textContent = (g.map(x => `${x.nombre} ${Math.round(x.pct)} %`).join(' · ') + (m.hacia && m.ang >= 3 ? ` (${Math.round(m.ang)}° ${m.hacia})` : '')).replace(/^./, c => c.toUpperCase()); }
   placeLabels(); setJointRows(r.dem ? jointRows(r.dem, isDefault() ? null : evaluateDefault(state.exId, state.s), pt, anatomia(r.pose)) : []);   // evaluateDefault solo desde aquí
   const cur = document.getElementById('cursor'); if (cur) { cur.setAttribute('x1', state.s * 300); cur.setAttribute('x2', state.s * 300); }
   requestAnimationFrame(frameLoop);
@@ -1743,5 +2414,5 @@ const loading = document.getElementById('loading');
 const bin = Uint8Array.from(atob(document.getElementById('model-b64').textContent.trim()), c => c.charCodeAt(0));
 new THREE.GLTFLoader().parse(bin.buffer, '', gltf => { initRig(gltf); loading.hidden = true; buildExerciseUI(); window.__ready = true; requestAnimationFrame(frameLoop); },
   err => { loading.textContent = 'No se ha podido cargar el modelo 3D. Recarga la página para reintentarlo.'; console.error(err); });
-window.__dbg = { camera, plates, state, RIG, THREE, setOverride: f => { POSE_OVERRIDE = f; }, evaluate, authoredPose, POSES, REST, BN, withBody, DEFAULT_BODY, features, PRM, EXERCISES, demand, bodyParts, comOffset, midfootZ, evaluateDefault, MU, repPeak, anatomia, PAPEL, pinta, papelDe };
+window.__dbg = { sOfProg, progAt, keys3, camera, plates, state, RIG, THREE, setOverride: f => { POSE_OVERRIDE = f; }, camHold: (v, th, ph, r) => { CAM_HOLD = v; if (v) { goal.th = orbit.th = th; goal.ph = orbit.ph = ph; goal.r = orbit.r = r; } }, evaluate, authoredPose, POSES, REST, BN, withBody, DEFAULT_BODY, features, PRM, EXERCISES, demand, bodyParts, comOffset, midfootZ, evaluateDefault, MU, repPeak, anatomia, PAPEL, pinta, papelDe, PARAMS, pdef, prange, PSET, gripOf, solveLimb, poleOf, variantFor, VARIANT, pulleyAt, K, hollowAt, jalonData, sFin, evaluateRaw, psiOf, swivel, wrapA, ed, edCtx, edSet, edChanges, SAVED, buildExerciseUI, AJ, ajSet, actOf, fineAt, rangoOf, phide, elbowStable };
 })();

@@ -1,4 +1,4 @@
-"""Flexiones (spec X03-05): acción `push_up`, tipo de base `libre` (la animación tal cual) hasta que exista `floor` (X03-07).
+"""Flexiones (spec X03-05): acción `push_up`, tipo de base `floor` (X03-07; antes `libre`).
 Frame 1: arriba, brazos rectos con las manos bajo los hombros; frame 30: abajo, el pecho cerca del suelo y los codos a ~45°
 del tronco. El cuerpo, en línea recta del tobillo al hombro, apoyado en las puntas de los pies.
 
@@ -9,7 +9,7 @@ Es una base: manos (palma plana), cabeza, escápulas y la línea del cuerpo se r
 import math
 from mathutils import Matrix
 
-META = ('push_up', 'libre', 'Flexiones')
+META = ('push_up', 'floor', 'Flexiones')
 DEG = math.pi / 180
 PARAMS = {
     'HAND_HALF':  (0.24, 0.15, 0.40, 'Manos, media anchura (m)'),
@@ -50,7 +50,8 @@ def frames(F, p):
 
 
 def setup(F, act, p):
-    act['ff_status'] = 'borrador'; act['ff_mano'] = 'palma_plana'; act['ff_plan'] = 'floor'
+    act['ff_status'] = 'borrador'; act['ff_mano'] = 'palma_plana'
+    act['ff_apoyos'] = 'mano.L+mano.R;pie.L+pie.R'; act['ff_carga'] = 'ninguna'; act['ff_carga_pc'] = 0   # X03-14: dónde se apoya y dónde va la carga (demanda en `libre`)
 
 
 if __name__ == '__main__':
