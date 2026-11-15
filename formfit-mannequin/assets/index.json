@@ -6,6 +6,13 @@
    "estado": "ok",
    "mano": "barra_espalda"
   },
+  "barbell_curl": {
+   "base": "libre",
+   "nombre": "Curl con barra",
+   "estado": "borrador",
+   "mano": "colgado_supino",
+   "plan": "stand"
+  },
   "barbell_row": {
    "base": "row",
    "nombre": "Remo con barra",
@@ -44,6 +51,13 @@
    "nombre": "Remo en polea a un brazo",
    "estado": "revisar",
    "mano": ""
+  },
+  "chest_press_machine": {
+   "base": "libre",
+   "nombre": "Press de pecho en máquina",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "seat"
   },
   "Chinup": {
    "base": "hang",
@@ -96,11 +110,39 @@
    "eje": "grip",
    "valor": "supino"
   },
+  "lateral_raise": {
+   "base": "libre",
+   "nombre": "Elevaciones laterales",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "stand"
+  },
+  "leg_extension": {
+   "base": "libre",
+   "nombre": "Extensión de cuádriceps",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "seat"
+  },
   "leg_press": {
    "base": "seat",
    "nombre": "Prensa",
    "estado": "ok",
    "mano": ""
+  },
+  "lying_leg_curl": {
+   "base": "libre",
+   "nombre": "Curl femoral tumbado",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "bench"
+  },
+  "overhead_press": {
+   "base": "libre",
+   "nombre": "Press militar",
+   "estado": "borrador",
+   "mano": "barra_press",
+   "plan": "stand"
   },
   "pullup": {
    "base": "hang",
@@ -119,6 +161,20 @@
    "nombre": "Peso muerto rumano",
    "estado": "ok",
    "mano": "barra_pm"
+  },
+  "smith_squat": {
+   "base": "libre",
+   "nombre": "Sentadilla en multipower",
+   "estado": "borrador",
+   "mano": "barra_espalda",
+   "plan": "stand"
+  },
+  "tricep_pushdown": {
+   "base": "libre",
+   "nombre": "Extensión de tríceps en polea",
+   "estado": "borrador",
+   "mano": "barra_recta",
+   "plan": "cable"
   }
  },
  "manos": {

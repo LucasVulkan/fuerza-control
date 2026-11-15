@@ -21,7 +21,7 @@ const CATALOGO = [
   { id: 'sentadilla', nombre: 'Sentadilla', ejercicios: [
     { accion: 'back_squat', nombre: 'Sentadilla trasera', base: 'stand', mano: 'barra_espalda',
       fichas: ['squat_barbell', 'pause_squat_barbell', 'box_squat_barbell', 'smith_squat'],
-      ejes: { Implemento: { Barra: 'base', Multipower: 'script' }, Cajón: { 'Sin cajón': 'base', 'Con cajón': 'script' } } },
+      ejes: { Implemento: { Barra: 'base', Multipower: 'accion:smith_squat' }, Cajón: { 'Sin cajón': 'base', 'Con cajón': 'script' } } },
     { accion: 'front_squat', nombre: 'Sentadilla frontal', base: 'stand', mano: 'barra_espalda', fichas: ['front_squat_barbell'] },
     { accion: 'goblet_squat', nombre: 'Sentadilla goblet', base: 'stand', mano: 'goblet', fichas: ['goblet_squat'],
       ejes: { Implemento: { Kettlebell: 'base', Mancuerna: 'script' } } },
@@ -71,6 +71,7 @@ const CATALOGO = [
       fichas: ['push_up', 'knee_push_up', 'incline_push_up', 'decline_push_up', 'diamond_push_up', 'weighted_push_up'],
       ejes: { Apoyo: { Pies: 'base', Rodillas: 'script' }, Altura: { 'En el suelo': 'base', 'Manos elevadas': 'script', 'Pies elevados': 'script' },
               Manos: { Normales: 'base', 'Juntas (diamante)': 'script' }, Lastre: { Sin: 'base', 'Con lastre': 'script' } } },
+    { accion: 'chest_press_machine', nombre: 'Press de pecho en máquina', base: 'seat', mano: '28', fichas: ['chest_press_machine'] },
     { accion: 'dip', nombre: 'Fondos en paralelas', base: 'hang', mano: 'barra_press', fichas: ['dip', 'dip_assisted'],
       ejes: { Asistencia: { Sin: 'base', 'Con goma': 'script' } } },
   ] },
@@ -99,6 +100,21 @@ const CATALOGO = [
     { accion: 'db_row_unilateral', nombre: 'Remo con mancuerna a una mano', base: 'row', mano: '', fichas: ['db_row_unilateral'] },
     { accion: 'face_pull', nombre: 'Face pull', base: 'cable', mano: 'cuerda', fichas: ['face_pull'] },
     { accion: 'australian_row', nombre: 'Remo invertido', base: 'hang', mano: 'colgado_prono', fichas: ['australian_row', 'ring_row'] },
+  ] },
+  { id: 'pierna_maquina', nombre: 'Pierna en máquina', ejercicios: [
+    { accion: 'leg_extension', nombre: 'Extensión de cuádriceps', base: 'seat', mano: '28', fichas: ['leg_extension'] },
+    { accion: 'lying_leg_curl', nombre: 'Curl femoral tumbado', base: 'bench', mano: '28', fichas: ['leg_curl_lying', 'seated_leg_curl'],
+      ejes: { Postura: { Tumbado: 'base', Sentado: 'accion' } } },
+  ] },
+  { id: 'hombro', nombre: 'Hombro', ejercicios: [
+    { accion: 'lateral_raise', nombre: 'Elevaciones laterales', base: 'stand', mano: '28', fichas: ['lateral_raise_db', 'lateral_raise_cable', 'lateral_raise_machine'],
+      ejes: { Implemento: { Mancuernas: 'base', Polea: 'accion', Máquina: 'accion' } } },
+  ] },
+  { id: 'brazos', nombre: 'Brazos', ejercicios: [
+    { accion: 'barbell_curl', nombre: 'Curl con barra', base: 'stand', mano: 'colgado_supino', fichas: ['bicep_curl_barbell', 'bicep_curl_supination', 'hammer_curl', 'cable_curl'],
+      ejes: { Implemento: { Barra: 'base', Mancuernas: 'script|28', Polea: 'accion' }, Agarre: { Supino: 'base', Martillo: 'accion' } } },
+    { accion: 'tricep_pushdown', nombre: 'Extensión de tríceps en polea', base: 'cable', mano: 'barra_recta', fichas: ['tricep_pushdown'],
+      ejes: { Maneral: { 'Barra recta': 'base', Cuerda: 'script|cuerda' } } },
   ] },
   { id: 'core', nombre: 'Core', ejercicios: [
     { accion: 'plank', nombre: 'Plancha', base: 'floor', mano: 'palma_plana', fichas: ['plank', 'weighted_plank', 'plank_shoulder_tap'] },
