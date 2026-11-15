@@ -222,6 +222,13 @@ def place_hand(S, wrist, hand_rot, pole_dir, curl=CURL):
     fist(S, curl)
 
 
+def hand_frame(S, axis, palm):
+    """Giro de la mano S (respecto a su reposo) para que su eje (muñeca -> dedos) apunte a `axis` y la palma mire a `palm`
+    (mundo; perpendiculares). En reposo el eje es +X (L) / −X (R) y la palma mira abajo."""
+    c0 = Vector(axis).normalized() * (1 if S == 'L' else -1); c2 = -Vector(palm).normalized()
+    return Matrix((c0, c2.cross(c0), c2)).transposed()
+
+
 def place_foot(S, f, z, x, pitch_deg=0.0, toe_out_deg=0.0, knee=None):
     """Un tobillo en (f, z, x) con el pie girado `pitch_deg` alrededor del eje lateral (+ = punta abajo) y `toe_out_deg` hacia
     fuera; knee = (f, z, x) adonde apunta la rodilla (el polo del IK), si no la del rig."""

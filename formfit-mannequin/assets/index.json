@@ -40,6 +40,13 @@
    "estado": "ok",
    "mano": "28"
   },
+  "cable_fly": {
+   "base": "libre",
+   "nombre": "Cruce de poleas",
+   "estado": "borrador",
+   "mano": "asa",
+   "plan": "cable"
+  },
   "cable_row": {
    "base": "cable",
    "nombre": "Remo en polea",
@@ -51,6 +58,13 @@
    "nombre": "Remo en polea a un brazo",
    "estado": "revisar",
    "mano": ""
+  },
+  "calf_raise": {
+   "base": "libre",
+   "nombre": "Elevación de gemelos",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "stand"
   },
   "chest_press_machine": {
    "base": "libre",
@@ -68,17 +82,45 @@
    "eje": "grip",
    "valor": "supino"
   },
+  "db_row_unilateral": {
+   "base": "libre",
+   "nombre": "Remo con mancuerna a una mano",
+   "estado": "borrador",
+   "mano": "",
+   "plan": "row"
+  },
   "deadlift": {
    "base": "hinge",
    "nombre": "Peso muerto",
    "estado": "ok",
    "mano": "barra_pm"
   },
+  "dip": {
+   "base": "libre",
+   "nombre": "Fondos en paralelas",
+   "estado": "borrador",
+   "mano": "barra_press",
+   "plan": "hang"
+  },
+  "face_pull": {
+   "base": "libre",
+   "nombre": "Face pull",
+   "estado": "borrador",
+   "mano": "cuerda",
+   "plan": "cable"
+  },
   "front_squat": {
    "base": "stand",
    "nombre": "Sentadilla frontal",
    "estado": "ok",
    "mano": "barra_espalda"
+  },
+  "goblet_squat": {
+   "base": "libre",
+   "nombre": "Sentadilla goblet",
+   "estado": "borrador",
+   "mano": "goblet",
+   "plan": "stand"
   },
   "hip_thrust": {
    "base": "bench",
@@ -144,6 +186,13 @@
    "mano": "barra_press",
    "plan": "stand"
   },
+  "plank": {
+   "base": "libre",
+   "nombre": "Plancha",
+   "estado": "borrador",
+   "mano": "palma_plana",
+   "plan": "floor"
+  },
   "pullup": {
    "base": "hang",
    "nombre": "Dominada",
@@ -155,6 +204,13 @@
    "nombre": "Flexiones",
    "estado": "ok",
    "mano": "palma_plana"
+  },
+  "reverse_lunge": {
+   "base": "libre",
+   "nombre": "Zancada atrás",
+   "estado": "borrador",
+   "mano": "28",
+   "plan": "split"
   },
   "romanian_deadlift": {
    "base": "hinge",

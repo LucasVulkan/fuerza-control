@@ -72,6 +72,8 @@ const CATALOGO = [
       ejes: { Apoyo: { Pies: 'base', Rodillas: 'script' }, Altura: { 'En el suelo': 'base', 'Manos elevadas': 'script', 'Pies elevados': 'script' },
               Manos: { Normales: 'base', 'Juntas (diamante)': 'script' }, Lastre: { Sin: 'base', 'Con lastre': 'script' } } },
     { accion: 'chest_press_machine', nombre: 'Press de pecho en máquina', base: 'seat', mano: '28', fichas: ['chest_press_machine'] },
+    { accion: 'cable_fly', nombre: 'Cruce de poleas', base: 'cable', mano: 'asa', fichas: ['cable_fly', 'chest_fly_db', 'incline_fly_db', 'chest_fly_machine'],
+      ejes: { Implemento: { Poleas: 'base', Mancuernas: 'accion', Máquina: 'accion' } } },
     { accion: 'dip', nombre: 'Fondos en paralelas', base: 'hang', mano: 'barra_press', fichas: ['dip', 'dip_assisted'],
       ejes: { Asistencia: { Sin: 'base', 'Con goma': 'script' } } },
   ] },
@@ -105,6 +107,8 @@ const CATALOGO = [
     { accion: 'leg_extension', nombre: 'Extensión de cuádriceps', base: 'seat', mano: '28', fichas: ['leg_extension'] },
     { accion: 'lying_leg_curl', nombre: 'Curl femoral tumbado', base: 'bench', mano: '28', fichas: ['leg_curl_lying', 'seated_leg_curl'],
       ejes: { Postura: { Tumbado: 'base', Sentado: 'accion' } } },
+    { accion: 'calf_raise', nombre: 'Elevación de gemelos', base: 'stand', mano: '28', fichas: ['calf_raise_standing', 'calf_raise_machine', 'seated_calf_raise', 'donkey_calf_raise'],
+      ejes: { Implemento: { Mancuernas: 'base', Máquina: 'script' }, Postura: { 'De pie': 'base', Sentado: 'accion', Burro: 'accion' } } },
   ] },
   { id: 'hombro', nombre: 'Hombro', ejercicios: [
     { accion: 'lateral_raise', nombre: 'Elevaciones laterales', base: 'stand', mano: '28', fichas: ['lateral_raise_db', 'lateral_raise_cable', 'lateral_raise_machine'],
