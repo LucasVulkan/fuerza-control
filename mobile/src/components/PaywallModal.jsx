@@ -33,7 +33,7 @@ import { showDialog } from './ui/dialog';
 import { CheckIcon, CloseIcon } from './ui/EditorIcons';
 import { RowIcon } from './ui/MenuList';
 import { ROW_ICON } from './ui/rowIcons';
-import FitLogo from './ui/FitLogo';
+import BudiLogo from './ui/BudiLogo';
 import TrainerSyncModal from './TrainerSyncModal';
 import { TERMS_URL, PRIVACY_URL } from '../config/legal';
 
@@ -367,9 +367,8 @@ function PaywallBody({ packages, introIds, loading, reason, onClose, onNeedsAcco
         bounces={false}
       >
         <View style={styles.topRow}>
-          <View style={styles.logo} accessible accessibilityLabel="Forma Fit Pro">
-            <Text style={styles.forma}>Forma</Text>
-            <FitLogo height={14} />
+          <View style={styles.logo} accessible accessibilityLabel="Budi Pro">
+            <BudiLogo height={17} />
             <View style={styles.proPill}><Text style={styles.proTxt}>PRO</Text></View>
           </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
@@ -524,13 +523,6 @@ const makeStyles = (th) => StyleSheet.create({
   // Marca
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logo:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  // El logotipo, igual que en la cabecera de la app (AppHeader `appNameForma`).
-  forma: {
-    fontFamily:    'Inter_900Black_Italic',
-    fontSize:      19,
-    color:         th.colors.text,
-    letterSpacing: -1.14,
-  },
   proPill: {
     backgroundColor:   th.colors.accent,
     borderRadius:      th.radius.sm,

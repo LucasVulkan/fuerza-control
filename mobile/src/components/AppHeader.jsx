@@ -1,6 +1,6 @@
 /**
  * AppHeader — shared header for all main tabs.
- * Shows Forma Fit logo + settings menu (≡).
+ * Shows Budi logo + settings menu (≡).
  * Self-contained: manages settings sheet + import logic internally.
  */
 
@@ -28,7 +28,7 @@ import { Switch }       from './ui/EditorRows';
 import { ArrowIcon, HelpIcon } from './ui/EditorIcons';
 import { Section, MenuRow, Status, RowIcon, SheetSlide, ROW_CHEVRON } from './ui/MenuList';
 import { ROW_ICON } from './ui/rowIcons';
-import FitLogo from './ui/FitLogo';
+import BudiLogo from './ui/BudiLogo';
 import { formatWhen } from '../utils/formatWhen';
 import { spacing, textStyles, borders, lh } from '../theme';
 import { THEME_LIST } from '../themes';
@@ -609,8 +609,7 @@ export default function AppHeader({ onHelp }) {
     <>
       <View style={[styles.header, { backgroundColor: th.colors.headerBg }]}>
         <View style={styles.appNameContainer}>
-          <Text style={styles.appNameForma}>Forma</Text>
-          <FitLogo height={14} />
+          <BudiLogo height={17} />
         </View>
         <Text style={styles.clockText}>{formatClock(now, language)}</Text>
         {/* Fuera del flujo: el reloj no se mueve al cambiar de pestaña. */}
@@ -689,6 +688,10 @@ export default function AppHeader({ onHelp }) {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
+// Logo y menú ocupan lo mismo a cada lado, así la fecha queda centrada en la barra.
+// ponytail: el logo mide ~38 dp; con letra del sistema muy grande puede pasar de 40 y descentrar 1-2 dp.
+const HEADER_SIDE_W = 40;
+
 const makeStyles = (th) => StyleSheet.create({
   // La hoja de exportar: sus dos filas con la separación de `Section`.
   exportRows: { marginBottom: spacing.sm },
@@ -703,15 +706,7 @@ const makeStyles = (th) => StyleSheet.create({
   appNameContainer: {
     flexDirection: 'row',
     alignItems:    'center',
-    gap:           spacing.xs,
-    minWidth:      88,
-  },
-  // "Forma" — Inter Black Italic 19px, tracking -1.14 (Figma logo)
-  appNameForma: {
-    fontFamily:    'Inter_900Black_Italic',
-    fontSize:      19,
-    color:         th.colors.text,
-    letterSpacing: -1.14,
+    minWidth:      HEADER_SIDE_W,
   },
   // Fecha — Inter Bold 10px, tracking 0.4, mutedLight (Figma)
   clockText: {
@@ -729,7 +724,7 @@ const makeStyles = (th) => StyleSheet.create({
   },
   menuBtn: {
     padding:  spacing.xs,
-    minWidth: 36,
+    minWidth: HEADER_SIDE_W,
     alignItems: 'flex-end',
   },
 

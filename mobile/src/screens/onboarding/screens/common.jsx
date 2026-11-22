@@ -20,7 +20,7 @@ import { spacing, textStyles, withOpacity } from '../../../theme';
 import { useTheme, useThemedStyles } from '../../../useTheme';
 import { Text, MAX_FONT_SCALE } from '../../../components/ui/Text';
 import Marked from '../../../components/ui/Marked';
-import FitLogo from '../../../components/ui/FitLogo';
+import BudiLogo from '../../../components/ui/BudiLogo';
 import { Rise } from '../../../components/ui/Rise';
 import WelcomeArt from '../../../components/onboarding/WelcomeArt';
 import { CheckIcon } from '../../../components/ui/EditorIcons';
@@ -123,9 +123,8 @@ function Welcome({ goTo }) {
       </View>
       {/* Cabecera: el logotipo a la izquierda y el idioma a la derecha, a la misma altura. */}
       <View style={[styles.head, { top: insets.top }]}>
-        <View style={styles.brand} accessible accessibilityLabel="Forma Fit">
-          <Text style={styles.forma}>Forma</Text>
-          <FitLogo height={15} color={styles.forma.color} />
+        <View style={styles.brand} accessible accessibilityLabel="Budi">
+          <BudiLogo height={19} color={styles.forma.color} />
         </View>
         <View
           style={styles.langsw}
@@ -201,7 +200,7 @@ function Units({ goTo }) {
 
 // ── Tema (§5.4) ───────────────────────────────────────────────────────────────
 
-// Forma Fit primero; el resto, claro y oscuro intercalados (hay 2 claros: earthy y space).
+// El tema de la marca primero; el resto, claro y oscuro intercalados (hay 2 claros: earthy y space).
 const THEME_ORDER = ['formaFit', 'earthy', 'dark', 'space', 'steel', 'midnight'];
 
 /** Una muestra: el fondo, la superficie y el acento del tema, con su nombre. La elegida se eleva. */
@@ -341,15 +340,9 @@ const makeStyles = (th) => StyleSheet.create({
   lime:    { flex: 1, backgroundColor: th.colors.accent },
   art:     { position: 'absolute', left: 0, right: 0 },
   head:    { position: 'absolute', left: 0, right: 0, height: HEAD_H, paddingHorizontal: spacing.lg + 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  // Como en la cabecera de la app (`appNameContainer`): centrados, y `FitLogo` baja él solo a la línea base.
-  brand:   { flexDirection: 'row', alignItems: 'center', gap: spacing.xs2 },
-  // El logotipo de la cabecera de la app (`appNameForma`), en negro sobre el lima.
-  forma: {
-    fontFamily:    'Inter_900Black_Italic',
-    fontSize:      22,
-    color:         th.colors.onAccent,
-    letterSpacing: -1.3,
-  },
+  brand:   { flexDirection: 'row', alignItems: 'center' },
+  // El logotipo, de una tinta en negro: la i lima no se vería sobre el lima.
+  forma:   { color: th.colors.onAccent },
   langsw:    { flexDirection: 'row', gap: spacing.xs, padding: 3, borderRadius: th.radius.md, backgroundColor: withOpacity(th.colors.onAccent, 0.12) },
   lang:      { paddingVertical: spacing.sm2 - 1, paddingHorizontal: spacing.md, borderRadius: th.radius.sm + 2 },
   langOn:    { backgroundColor: th.colors.onAccent },

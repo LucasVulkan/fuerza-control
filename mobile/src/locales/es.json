@@ -462,13 +462,13 @@
   "trainer": {
     "sectionOptions": "Opciones",
     "offHeading": "Conecta con tu entrenador",
-    "offWhy": "Si tu entrenador usa Forma Fit y te ha mandado un código, introdúcelo.",
+    "offWhy": "Si tu entrenador usa Budi y te ha mandado un código, introdúcelo.",
     "step1": "Te da un código",
     "step2": "Recibes su programa",
     "step3": "Le llegan tus sesiones",
     "enterCode": "Introducir código",
     "alreadyConnected": "Ya estaba conectado",
-    "inviteQ": "¿Tu entrenador no usa Forma Fit?",
+    "inviteQ": "¿Tu entrenador no usa Budi?",
     "inviteCta": "Invítale",
     "accessCode": "Código",
     "failedAt": "Falló · {{when}}",
@@ -663,7 +663,7 @@
     "createWith": "CREA TU CUENTA",
     "or": "o",
     "notNow": "Ahora no",
-    "firstLead": "Si tus clientes usan Forma Fit, crea una cuenta para conectarte con ellos: les envías su programa y ves lo que entrenan. Sin cuenta también puedes llevarlos y apuntar tú sus sesiones.",
+    "firstLead": "Si tus clientes usan Budi, crea una cuenta para conectarte con ellos: les envías su programa y ves lo que entrenan. Sin cuenta también puedes llevarlos y apuntar tú sus sesiones.",
     "firstCreate": "Crear cuenta",
     "rowGoogle": "Continuar con Google",
     "rowCode": "Usar un código personal",
@@ -2460,10 +2460,10 @@
       "waiting": "Esperando a {{name}}",
       "leftTitle": "{{name}} se desconectó",
       "leftLine": "Puede volver cuando quiera con este mismo código.",
-      "waitLine": "Que descargue Forma Fit e introduzca este código.",
+      "waitLine": "Que descargue Budi e introduzca este código.",
       "needProgram": "Asígnale un programa: el código funciona en cuanto tenga uno.",
       "share": "Compartir",
-      "shareText": "Te invito a Forma Fit para enviarte tu programa. Toca para conectar: {{url}}\n\nSi te pide un código: {{code}}",
+      "shareText": "Te invito a Budi para enviarte tu programa. Toca para conectar: {{url}}\n\nSi te pide un código: {{code}}",
       "linkedLine": "Entrena con su app: lo que haga te llega solo.",
       "cancel": "Cancelar invitación",
       "cancelConfirmTitle": "Cancelar la invitación",
@@ -2950,7 +2950,7 @@
       "next": "Siguiente",
       "continue": "Continuar",
       "welcome": {
-        "hero": "¡Bienvenido/a a\n*Forma Fit*!",
+        "hero": "¡Bienvenido/a a\n*Budi*!",
         "tagline": "Configura tu perfil en dos minutos",
         "invited": "*{{trainer}}* te ha invitado. Al final de los ajustes te conectamos.",
         "invitedAnon": "*Tu entrenador* te ha invitado. Al final de los ajustes te conectamos.",
@@ -3193,12 +3193,12 @@
     "coached": {
       "code": {
         "title": "Conecta con tu *entrenador*",
-        "sub": "Si tu entrenador usa Forma Fit, introduce el código que te ha pasado para recibir su programa.",
+        "sub": "Si tu entrenador usa Budi, introduce el código que te ha pasado para recibir su programa.",
         "subInvite": "Viene de tu invitación. Comprueba que es este y sigue.",
         "continue": "Continuar",
         "later": "Lo introduzco más tarde",
         "askLink": "¿No te lo ha pasado? Pídeselo",
-        "noApp": "¿Tu entrenador no usa Forma Fit?",
+        "noApp": "¿Tu entrenador no usa Budi?",
         "accountLink": "¿Ya estabas conectado? Entra con tu cuenta"
       },
       "confirm": {
@@ -3223,16 +3223,16 @@
       "ask": {
         "title": "Tu entrenador genera el *código*",
         "sub": "Tu entrenador genera el código en su app al crear tu ficha. Si ya la tiene, lo encuentra en Clientes → tu ficha → Info.",
-        "message": "¡Hola! Ya tengo Forma Fit. ¿Me pasas mi código de cliente para conectarme?",
+        "message": "¡Hola! Ya tengo Budi. ¿Me pasas mi código de cliente para conectarme?",
         "send": "Enviar mensaje",
         "later": "Lo introduzco más tarde"
       },
       "noapp": {
         "invite": "Invítale a la app",
         "inviteDesc": "Podrá gestionar tu programa desde su móvil y ver tus entrenos. Empezar es gratis.",
-        "inviteMessage": "¡Hola! Estoy usando Forma Fit para entrenar. Si la instalas, puedes gestionar mi programa desde ahí y ver mis entrenos: {{url}}",
+        "inviteMessage": "¡Hola! Estoy usando Budi para entrenar. Si la instalas, puedes gestionar mi programa desde ahí y ver mis entrenos: {{url}}",
         "copy": "Sin código, recrea tu entreno en la app",
-        "copyDesc": "Añade las sesiones y ejercicios de tu entrenador para llevar el registro en Forma Fit."
+        "copyDesc": "Añade las sesiones y ejercicios de tu entrenador para llevar el registro en Budi."
       },
       "wait": {
         "title": "Cuando te llegue el *código*",
@@ -3481,7 +3481,7 @@
       "source": {
         "title": "Elige cómo *empezar*",
         "sub": "Podrás editar el programa en cualquier momento.",
-        "recommended": "Plantillas Forma Fit",
+        "recommended": "Plantillas Budi",
         "recommendedDesc": "Según tu nivel, tu objetivo y tus días de entreno",
         "scratch": "Crear desde cero",
         "scratchDesc": "Define sesiones, ejercicios y progresión",

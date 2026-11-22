@@ -38,7 +38,7 @@ describe('textStyleFor', () => {
 
 describe('MAX_FONT_SCALE', () => {
   // Se perdió una vez en una reescritura de theme.js y nadie se enteró: el
-  // import roto da `undefined`, `Math.min(x, undefined)` da NaN, y FitLogo se
+  // import roto da `undefined`, `Math.min(x, undefined)` da NaN, y BudiLogo se
   // volvió invisible sin un error en consola. ESLint no ve exports que faltan.
   it('existe y es un techo razonable', () => {
     expect(typeof MAX_FONT_SCALE).toBe('number');

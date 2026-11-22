@@ -252,7 +252,7 @@ export const THEMES = {
   earthy:   makeTheme({ id: 'earthy',   name: 'Earthy',   scheme: 'light', colors: earthyColors }),
   space:    makeTheme({ id: 'space',    name: 'Space',    scheme: 'light', colors: spaceColors, radius: SOFT }),
   steel:    makeTheme({ id: 'steel',    name: 'Steel',    scheme: 'dark',  colors: steelColors, radius: STEEL }),
-  formaFit: makeTheme({ id: 'formaFit', name: 'FormaFit', scheme: 'dark',  colors: formaFitColors, radius: FORMAFIT_RADIUS, tint: {
+  formaFit: makeTheme({ id: 'formaFit', name: 'Budi', scheme: 'dark',  colors: formaFitColors, radius: FORMAFIT_RADIUS, tint: {
     accent10: 'rgba(184, 255, 0, 0.1)',   // tint/accent-10 (base #b8ff00, NO #aae216)
     accent50: 'rgba(184, 255, 0, 0.5)',   // tint/accent-50
     red30:    'rgba(189, 6, 0, 0.3)',     // tint/red-30 (base #bd0600)
