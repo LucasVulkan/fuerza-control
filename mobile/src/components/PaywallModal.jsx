@@ -368,7 +368,7 @@ function PaywallBody({ packages, introIds, loading, reason, onClose, onNeedsAcco
       >
         <View style={styles.topRow}>
           <View style={styles.logo} accessible accessibilityLabel="Budi Pro">
-            <BudiLogo height={17} />
+            <BudiLogo height={20} />
             <View style={styles.proPill}><Text style={styles.proTxt}>PRO</Text></View>
           </View>
           <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>

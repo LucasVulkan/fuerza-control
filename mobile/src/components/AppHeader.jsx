@@ -609,7 +609,7 @@ export default function AppHeader({ onHelp }) {
     <>
       <View style={[styles.header, { backgroundColor: th.colors.headerBg }]}>
         <View style={styles.appNameContainer}>
-          <BudiLogo height={17} />
+          <BudiLogo height={20} />
         </View>
         <Text style={styles.clockText}>{formatClock(now, language)}</Text>
         {/* Fuera del flujo: el reloj no se mueve al cambiar de pestaña. */}
@@ -689,8 +689,8 @@ export default function AppHeader({ onHelp }) {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 // Logo y menú ocupan lo mismo a cada lado, así la fecha queda centrada en la barra.
-// ponytail: el logo mide ~38 dp; con letra del sistema muy grande puede pasar de 40 y descentrar 1-2 dp.
-const HEADER_SIDE_W = 40;
+// ponytail: el logo mide ~41 dp; con letra del sistema muy grande puede pasar de 44 y descentrar 1-2 dp.
+const HEADER_SIDE_W = 44;
 
 const makeStyles = (th) => StyleSheet.create({
   // La hoja de exportar: sus dos filas con la separación de `Section`.

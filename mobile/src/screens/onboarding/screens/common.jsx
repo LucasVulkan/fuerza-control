@@ -124,7 +124,7 @@ function Welcome({ goTo }) {
       {/* Cabecera: el logotipo a la izquierda y el idioma a la derecha, a la misma altura. */}
       <View style={[styles.head, { top: insets.top }]}>
         <View style={styles.brand} accessible accessibilityLabel="Budi">
-          <BudiLogo height={19} color={styles.forma.color} />
+          <BudiLogo height={22} color={styles.forma.color} />
         </View>
         <View
           style={styles.langsw}
