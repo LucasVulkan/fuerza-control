@@ -134,7 +134,8 @@
           }
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "./plugins/hardware-opcional"
     ],
     "extra": {
       "eas": {
