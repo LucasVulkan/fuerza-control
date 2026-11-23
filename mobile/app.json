@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Forma Fit",
+    "name": "Budi",
     "slug": "forma",
     "scheme": [
       "forma",
@@ -26,7 +26,7 @@
         "LSSupportsOpeningDocumentsInPlace": false,
         "CFBundleDocumentTypes": [
           {
-            "CFBundleTypeName": "Forma Fit",
+            "CFBundleTypeName": "Budi",
             "LSHandlerRank": "Owner",
             "LSItemContentTypes": [
               "com.formastudio.formafit.fitdata"
@@ -36,7 +36,7 @@
         "UTExportedTypeDeclarations": [
           {
             "UTTypeIdentifier": "com.formastudio.formafit.fitdata",
-            "UTTypeDescription": "Forma Fit",
+            "UTTypeDescription": "Budi",
             "UTTypeConformsTo": [
               "public.json"
             ],
@@ -56,7 +56,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundImage": "./assets/adaptive-icon-bg.png",
-        "backgroundColor": "#B6E512"
+        "backgroundColor": "#1F1F1F"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.formastudio.formafit",

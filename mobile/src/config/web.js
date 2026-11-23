@@ -1,8 +1,8 @@
 /**
- * La web pública (spec M02, repo formafit-pro.github.io). Un solo sitio para
+ * La web pública (spec M02, repo formafit-pro.github.io, dominio budiapp.app). Un solo sitio para
  * la dirección: el día del dominio propio (M02-04) se cambia aquí.
  */
-export const WEB_URL = 'https://formafit-pro.github.io';
+export const WEB_URL = 'https://budiapp.app';
 
 /** Enlace de invitación de un cliente (M01-04): la página /join abre la app. */
 export const inviteUrl = (code) => `${WEB_URL}/join/?c=${encodeURIComponent(code)}`;

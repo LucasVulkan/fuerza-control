@@ -39,7 +39,7 @@ export function buildBackupPayload(state = {}) {
     version:    '4',
     exportType: 'full',
     exportDate: new Date().toISOString().split('T')[0],
-    appName:    'Forma Fit',
+    appName:    'Budi',
 
     profile:          withoutFreeClients(state.profile),
     workoutLog:       state.workoutLog ?? [],

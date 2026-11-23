@@ -3474,7 +3474,7 @@ export const useStore = create(
             version: '4',
             exportType: withLog ? 'program_with_log' : 'program',
             exportDate: new Date().toISOString().split('T')[0],
-            appName: 'Forma Fit',
+            appName: 'Budi',
             // El receptor recibe SIEMPRE un programa suyo: `owner` es semántica
             // del dispositivo, no una identidad global, y esa es la propiedad
             // que hace que el protocolo con el cliente no necesite nada más.

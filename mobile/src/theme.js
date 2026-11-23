@@ -231,7 +231,7 @@ export const lh = (size, ratio = LINE.body) => Math.round(size * ratio);
  * perceptible y las tarjetas todavía cierran.
  *
  * Lo consumen `src/components/ui/Text` (todo el texto de la app), los tres
- * `Animated.Text` que no pasan por ese wrapper, y `ui/FitLogo` — que lo necesita
+ * `Animated.Text` que no pasan por ese wrapper, y `ui/BudiLogo` — que lo necesita
  * para escalar el SVG a la par que el texto del logotipo. Si esta constante
  * desaparece, `Math.min(x, undefined)` es NaN y el logo se vuelve invisible sin
  * un solo error: por eso theme.test.js la vigila.
