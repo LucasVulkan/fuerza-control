@@ -17,6 +17,6 @@ describe('parseInviteUrl (M01-04)', () => {
     expect(parseInviteUrl(null)).toBeUndefined();
   });
   it('el enlace de invitar lleva el código', () => {
-    expect(inviteUrl('XK7M-2P4T')).toBe('https://formafit-pro.github.io/join/?c=XK7M-2P4T');
+    expect(inviteUrl('XK7M-2P4T')).toBe('https://budiapp.app/join/?c=XK7M-2P4T');
   });
 });
